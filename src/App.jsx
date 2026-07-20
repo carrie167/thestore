@@ -5,7 +5,6 @@ import AuthPage from './pages/AuthPage'
 import ListPage from './pages/ListPage'
 import InventoryPage from './pages/InventoryPage'
 import MealsPage from './pages/MealsPage'
-import ManagePage from './pages/ManagePage'
 import NavBar from './components/NavBar'
 
 function AppShell() {
@@ -43,6 +42,12 @@ function AppShell() {
           <InventoryPage
             sections={sections} inventory={inventory} listItems={listItems}
             activeList={activeList} onAddToList={addToList}
+            onAddInventoryItem={addInventoryItem}
+            onUpdateInventoryItem={updateInventoryItem}
+            onDeleteInventoryItem={deleteInventoryItem}
+            onAddSection={addSection}
+            onUpdateSection={updateSection}
+            onDeleteSection={deleteSection}
           />
         )}
         {tab === 'meals' && (
@@ -52,14 +57,6 @@ function AppShell() {
             onAddMealToList={addMealToList} onAddMeal={addMeal}
             onUpdateMeal={updateMeal} onDeleteMeal={deleteMeal}
             onAddInventoryItem={addInventoryItem}
-          />
-        )}
-        {tab === 'manage' && (
-          <ManagePage
-            sections={sections} inventory={inventory}
-            onAddItem={addInventoryItem} onUpdateItem={updateInventoryItem}
-            onDeleteItem={deleteInventoryItem}
-            onAddSection={addSection} onUpdateSection={updateSection} onDeleteSection={deleteSection}
           />
         )}
       </div>
@@ -77,7 +74,11 @@ function FullScreenMessage({ text }) {
   )
 }
 
-const signOutStyle = { position: 'fixed', top: 12, right: 12, border: 'none', background: 'rgba(0,0,0,0.06)', color: 'var(--charcoal-soft)', fontSize: 11, borderRadius: 6, padding: '4px 8px', zIndex: 5 }
+const signOutStyle = {
+  position: 'fixed', top: 8, right: 12, border: 'none',
+  background: 'rgba(0,0,0,0.06)', color: 'var(--charcoal-soft)',
+  fontSize: 11, borderRadius: 6, padding: '4px 8px', zIndex: 5,
+}
 
 export default function App() {
   return <AuthProvider><AppShell /></AuthProvider>
