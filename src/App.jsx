@@ -4,6 +4,7 @@ import { useStoreData } from './lib/useStoreData'
 import AuthPage from './pages/AuthPage'
 import ListPage from './pages/ListPage'
 import InventoryPage from './pages/InventoryPage'
+import MealsPage from './pages/MealsPage'
 import ManagePage from './pages/ManagePage'
 import NavBar from './components/NavBar'
 
@@ -18,9 +19,13 @@ function AppShell() {
     activeListId,
     setActiveListId,
     listItems,
+    meals,
+    mealIngredients,
     loading: dataLoading,
     error,
     addToList,
+    addMealToList,
+    updateQuantity,
     toggleChecked,
     removeFromList,
     clearList,
@@ -28,27 +33,15 @@ function AppShell() {
     updateInventoryItem,
     deleteInventoryItem,
     addSection,
+    addMeal,
+    updateMeal,
+    deleteMeal,
   } = useStoreData()
 
-  if (authLoading) {
-    return <FullScreenMessage text="Loading…" />
-  }
-
-  if (!user) {
-    return <AuthPage />
-  }
-
-  if (dataLoading) {
-    return <FullScreenMessage text="Loading your store…" />
-  }
-
-  if (error) {
-    return (
-      <FullScreenMessage
-        text={`Something went wrong loading your data: ${error.message}`}
-      />
-    )
-  }
+  if (authLoading) return <FullScreenMessage text="Loading…" />
+  if (!user) return <AuthPage />
+  if (dataLoading) return <FullScreenMessage text="Loading your store…" />
+  if (error) return <FullScreenMessage text={`Something went wrong: ${error.message}`} />
 
   const activeList = lists.find((l) => l.id === activeListId) || null
 
@@ -65,6 +58,7 @@ function AppShell() {
             onToggle={toggleChecked}
             onRemove={removeFromList}
             onClear={clearList}
+            onUpdateQuantity={updateQuantity}
           />
         )}
         {tab === 'inventory' && (
@@ -74,6 +68,18 @@ function AppShell() {
             listItems={listItems}
             activeList={activeList}
             onAddToList={addToList}
+          />
+        )}
+        {tab === 'meals' && (
+          <MealsPage
+            meals={meals}
+            mealIngredients={mealIngredients}
+            inventory={inventory}
+            activeList={activeList}
+            onAddMealToList={addMealToList}
+            onAddMeal={addMeal}
+            onUpdateMeal={updateMeal}
+            onDeleteMeal={deleteMeal}
           />
         )}
         {tab === 'manage' && (
@@ -88,44 +94,27 @@ function AppShell() {
         )}
       </div>
       <NavBar active={tab} onChange={setTab} />
-      <button onClick={signOut} style={signOutStyle}>
-        Sign out
-      </button>
+      <button onClick={signOut} style={signOutStyle}>Sign out</button>
     </div>
   )
 }
 
 function FullScreenMessage({ text }) {
   return (
-    <div
-      style={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--chalk)',
-        color: 'var(--charcoal-soft)',
-        fontFamily: 'var(--font-body)',
-        padding: 24,
-        textAlign: 'center',
-      }}
-    >
+    <div style={{
+      height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'var(--chalk)', color: 'var(--charcoal-soft)',
+      fontFamily: 'var(--font-body)', padding: 24, textAlign: 'center',
+    }}>
       {text}
     </div>
   )
 }
 
 const signOutStyle = {
-  position: 'fixed',
-  top: 12,
-  right: 12,
-  border: 'none',
-  background: 'rgba(0,0,0,0.06)',
-  color: 'var(--charcoal-soft)',
-  fontSize: 11,
-  borderRadius: 6,
-  padding: '4px 8px',
-  zIndex: 5,
+  position: 'fixed', top: 12, right: 12, border: 'none',
+  background: 'rgba(0,0,0,0.06)', color: 'var(--charcoal-soft)',
+  fontSize: 11, borderRadius: 6, padding: '4px 8px', zIndex: 5,
 }
 
 export default function App() {
