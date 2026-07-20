@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  /* Color tokens — chalkboard-adjacent, consistent with Carrie's other apps */
+  --charcoal: #2E3532;
+  --charcoal-soft: #3D4541;
+  --chalk: #F7F5F0;
+  --chalk-dim: #EAE6DC;
+  --terracotta: #C97B5C;
+  --terracotta-dark: #B0623F;
+  --sage: #8FA888;
+  --sage-dark: #708A6A;
+  --mustard: #C9A227;
+  --line: #DDD8CC;
+  --line-dark: #4A524E;
+  --danger: #C2614F;
+
+  /* Type */
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--chalk);
+  color: var(--charcoal);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+/* Visible keyboard focus everywhere */
+:focus-visible {
+  outline: 2px solid var(--terracotta);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.mono {
+  font-family: var(--font-mono);
+}

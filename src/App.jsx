@@ -1,0 +1,137 @@
+import { useState } from 'react'
+import { AuthProvider, useAuth } from './lib/AuthContext'
+import { useStoreData } from './lib/useStoreData'
+import AuthPage from './pages/AuthPage'
+import ListPage from './pages/ListPage'
+import InventoryPage from './pages/InventoryPage'
+import ManagePage from './pages/ManagePage'
+import NavBar from './components/NavBar'
+
+function AppShell() {
+  const { user, loading: authLoading, signOut } = useAuth()
+  const [tab, setTab] = useState('list')
+
+  const {
+    sections,
+    inventory,
+    lists,
+    activeListId,
+    setActiveListId,
+    listItems,
+    loading: dataLoading,
+    error,
+    addToList,
+    toggleChecked,
+    removeFromList,
+    clearList,
+    addInventoryItem,
+    updateInventoryItem,
+    deleteInventoryItem,
+    addSection,
+  } = useStoreData()
+
+  if (authLoading) {
+    return <FullScreenMessage text="Loading…" />
+  }
+
+  if (!user) {
+    return <AuthPage />
+  }
+
+  if (dataLoading) {
+    return <FullScreenMessage text="Loading your store…" />
+  }
+
+  if (error) {
+    return (
+      <FullScreenMessage
+        text={`Something went wrong loading your data: ${error.message}`}
+      />
+    )
+  }
+
+  const activeList = lists.find((l) => l.id === activeListId) || null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {tab === 'list' && (
+          <ListPage
+            sections={sections}
+            listItems={listItems}
+            lists={lists}
+            activeListId={activeListId}
+            onSwitchList={setActiveListId}
+            onToggle={toggleChecked}
+            onRemove={removeFromList}
+            onClear={clearList}
+          />
+        )}
+        {tab === 'inventory' && (
+          <InventoryPage
+            sections={sections}
+            inventory={inventory}
+            listItems={listItems}
+            activeList={activeList}
+            onAddToList={addToList}
+          />
+        )}
+        {tab === 'manage' && (
+          <ManagePage
+            sections={sections}
+            inventory={inventory}
+            onAddItem={addInventoryItem}
+            onUpdateItem={updateInventoryItem}
+            onDeleteItem={deleteInventoryItem}
+            onAddSection={addSection}
+          />
+        )}
+      </div>
+      <NavBar active={tab} onChange={setTab} />
+      <button onClick={signOut} style={signOutStyle}>
+        Sign out
+      </button>
+    </div>
+  )
+}
+
+function FullScreenMessage({ text }) {
+  return (
+    <div
+      style={{
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--chalk)',
+        color: 'var(--charcoal-soft)',
+        fontFamily: 'var(--font-body)',
+        padding: 24,
+        textAlign: 'center',
+      }}
+    >
+      {text}
+    </div>
+  )
+}
+
+const signOutStyle = {
+  position: 'fixed',
+  top: 12,
+  right: 12,
+  border: 'none',
+  background: 'rgba(0,0,0,0.06)',
+  color: 'var(--charcoal-soft)',
+  fontSize: 11,
+  borderRadius: 6,
+  padding: '4px 8px',
+  zIndex: 5,
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  )
+}
