@@ -16,7 +16,8 @@ function AppShell() {
     sections, inventory, lists, activeListId, setActiveListId, listItems,
     meals, mealIngredients, loading: dataLoading, error,
     addToList, addMealToList, updateQuantity, toggleChecked, removeFromList, clearList,
-    addInventoryItem, updateInventoryItem, deleteInventoryItem, addSection,
+    addInventoryItem, updateInventoryItem, deleteInventoryItem,
+    addSection, updateSection, deleteSection,
     addMeal, updateMeal, deleteMeal,
   } = useStoreData()
 
@@ -57,7 +58,8 @@ function AppShell() {
           <ManagePage
             sections={sections} inventory={inventory}
             onAddItem={addInventoryItem} onUpdateItem={updateInventoryItem}
-            onDeleteItem={deleteInventoryItem} onAddSection={addSection}
+            onDeleteItem={deleteInventoryItem}
+            onAddSection={addSection} onUpdateSection={updateSection} onDeleteSection={deleteSection}
           />
         )}
       </div>
@@ -69,19 +71,13 @@ function AppShell() {
 
 function FullScreenMessage({ text }) {
   return (
-    <div style={{
-      height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--chalk)', color: 'var(--charcoal-soft)',
-      fontFamily: 'var(--font-body)', padding: 24, textAlign: 'center',
-    }}>{text}</div>
+    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--chalk)', color: 'var(--charcoal-soft)', fontFamily: 'var(--font-body)', padding: 24, textAlign: 'center' }}>
+      {text}
+    </div>
   )
 }
 
-const signOutStyle = {
-  position: 'fixed', top: 12, right: 12, border: 'none',
-  background: 'rgba(0,0,0,0.06)', color: 'var(--charcoal-soft)',
-  fontSize: 11, borderRadius: 6, padding: '4px 8px', zIndex: 5,
-}
+const signOutStyle = { position: 'fixed', top: 12, right: 12, border: 'none', background: 'rgba(0,0,0,0.06)', color: 'var(--charcoal-soft)', fontSize: 11, borderRadius: 6, padding: '4px 8px', zIndex: 5 }
 
 export default function App() {
   return <AuthProvider><AppShell /></AuthProvider>
