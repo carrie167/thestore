@@ -2,7 +2,6 @@ const TABS = [
   { id: 'list', label: 'List' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'meals', label: 'Meals' },
-  { id: 'manage', label: 'Manage' },
 ]
 
 export default function NavBar({ active, onChange }) {
