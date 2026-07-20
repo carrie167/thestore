@@ -1,15 +1,8 @@
 import { useMemo, useState } from 'react'
 
 export default function ListPage({
-  sections,
-  listItems,
-  lists,
-  activeListId,
-  onSwitchList,
-  onToggle,
-  onRemove,
-  onClear,
-  onUpdateQuantity,
+  sections, listItems, lists, activeListId, onSwitchList,
+  onToggle, onRemove, onClear, onUpdateQuantity,
 }) {
   const [confirmClear, setConfirmClear] = useState(false)
 
@@ -39,52 +32,74 @@ export default function ListPage({
     [listItems]
   )
   const checkedCount = listItems.filter((i) => i.is_checked).length
-
-  if (listItems.length === 0) {
-    return (
-      <div style={styles.page}>
-        <Header
-          total={0} checked={0} count={0} onClearClick={null}
-          lists={lists} activeListId={activeListId} onSwitchList={onSwitchList}
-        />
-        <div style={styles.empty}>
-          <p style={styles.emptyTitle}>This list is empty</p>
-          <p style={styles.emptyBody}>Head to the Inventory tab and tap items to add them here, grouped by aisle.</p>
-        </div>
-      </div>
-    )
-  }
+  const hasMultipleLists = lists && lists.length > 1
 
   return (
     <div style={styles.page}>
-      <Header
-        total={total} checked={checkedCount} count={listItems.length}
-        onClearClick={() => setConfirmClear(true)}
-        lists={lists} activeListId={activeListId} onSwitchList={onSwitchList}
-      />
+      {/* List switcher — prominent segmented control */}
+      {hasMultipleLists && (
+        <div style={styles.switcher}>
+          {lists.map((list) => {
+            const isActive = list.id === activeListId
+            return (
+              <button
+                key={list.id}
+                onClick={() => onSwitchList(list.id)}
+                style={{
+                  ...styles.switcherBtn,
+                  background: isActive ? 'var(--charcoal)' : 'transparent',
+                  color: isActive ? 'var(--chalk)' : 'var(--charcoal-soft)',
+                }}
+              >
+                {list.kind === 'shared' ? '🛒 ' : '👤 '}{list.name}
+              </button>
+            )
+          })}
+        </div>
+      )}
 
-      <div style={styles.scroll}>
-        {grouped.map(({ section, items }) => (
-          <div key={section.id} style={styles.sectionGroup}>
-            <div style={styles.sectionHeader}>{section.name}</div>
-            {items.map((item) => (
-              <ListRow
-                key={item.id}
-                item={item}
-                onToggle={onToggle}
-                onRemove={onRemove}
-                onUpdateQuantity={onUpdateQuantity}
-              />
-            ))}
+      {/* Header row */}
+      <div style={styles.header}>
+        <div>
+          <h1 style={styles.title}>The Store</h1>
+          {listItems.length > 0 && (
+            <p style={styles.subtitle}>{checkedCount} of {listItems.length} checked</p>
+          )}
+        </div>
+        <div style={styles.headerRight}>
+          <div style={styles.totalWrap}>
+            <span style={styles.totalLabel}>Est. total</span>
+            <span style={styles.totalValue} className="mono">${total.toFixed(2)}</span>
           </div>
-        ))}
+          {listItems.length > 0 && (
+            <button style={styles.clearBtn} onClick={() => setConfirmClear(true)}>Clear</button>
+          )}
+        </div>
       </div>
+
+      {listItems.length === 0 ? (
+        <div style={styles.empty}>
+          <p style={styles.emptyTitle}>This list is empty</p>
+          <p style={styles.emptyBody}>Head to Inventory and tap items to add them here, grouped by aisle.</p>
+        </div>
+      ) : (
+        <div style={styles.scroll}>
+          {grouped.map(({ section, items }) => (
+            <div key={section.id} style={styles.sectionGroup}>
+              <div style={styles.sectionHeader}>{section.name}</div>
+              {items.map((item) => (
+                <ListRow key={item.id} item={item} onToggle={onToggle} onRemove={onRemove} onUpdateQuantity={onUpdateQuantity} />
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
 
       {confirmClear && (
         <div style={styles.modalOverlay} onClick={() => setConfirmClear(false)}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
             <p style={styles.modalTitle}>Clear this list?</p>
-            <p style={styles.modalBody}>This removes all {listItems.length} items. This can't be undone.</p>
+            <p style={styles.modalBody}>Removes all {listItems.length} items. Can't be undone.</p>
             <div style={styles.modalActions}>
               <button style={styles.modalCancel} onClick={() => setConfirmClear(false)}>Cancel</button>
               <button style={styles.modalConfirm} onClick={() => { onClear(); setConfirmClear(false) }}>Clear list</button>
@@ -96,76 +111,21 @@ export default function ListPage({
   )
 }
 
-function Header({ total, checked, count, onClearClick, lists, activeListId, onSwitchList }) {
-  return (
-    <div style={styles.header}>
-      <div style={styles.headerTop}>
-        <div>
-          <h1 style={styles.title}>The Store</h1>
-          {count > 0 && <p style={styles.subtitle}>{checked} of {count} checked</p>}
-        </div>
-        <div style={styles.headerRight}>
-          <div style={styles.totalWrap}>
-            <span style={styles.totalLabel}>Est. total</span>
-            <span style={styles.totalValue} className="mono">${total.toFixed(2)}</span>
-          </div>
-          {onClearClick && (
-            <button style={styles.clearBtn} onClick={onClearClick}>Clear</button>
-          )}
-        </div>
-      </div>
-
-      {lists && lists.length > 1 && (
-        <div style={styles.listTabs}>
-          {lists.map((list) => {
-            const isActive = list.id === activeListId
-            return (
-              <button
-                key={list.id}
-                onClick={() => onSwitchList(list.id)}
-                style={{
-                  ...styles.listTab,
-                  background: isActive ? 'var(--charcoal)' : 'var(--chalk-dim)',
-                  color: isActive ? 'var(--chalk)' : 'var(--charcoal-soft)',
-                }}
-              >
-                {list.kind === 'shared' ? '🛒 ' : '👤 '}{list.name}
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function ListRow({ item, onToggle, onRemove, onUpdateQuantity }) {
   const qty = item.quantity || 1
   const lineTotal = item.est_price ? Number(item.est_price) * qty : null
 
   return (
-    <div style={{
-      ...styles.row,
-      background: item.is_checked ? 'var(--chalk-dim)' : 'var(--chalk)',
-    }}>
+    <div style={{ ...styles.row, background: item.is_checked ? 'var(--chalk-dim)' : 'var(--chalk)' }}>
       <button
-        style={{
-          ...styles.checkbox,
-          background: item.is_checked ? 'var(--sage)' : 'transparent',
-          borderColor: item.is_checked ? 'var(--sage)' : 'var(--line)',
-        }}
+        style={{ ...styles.checkbox, background: item.is_checked ? 'var(--sage)' : 'transparent', borderColor: item.is_checked ? 'var(--sage)' : 'var(--line)' }}
         onClick={() => onToggle(item)}
-        aria-label={item.is_checked ? `Uncheck ${item.name}` : `Check ${item.name}`}
       >
         {item.is_checked && <CheckIcon />}
       </button>
 
       <button
-        style={{
-          ...styles.rowLabel,
-          textDecoration: item.is_checked ? 'line-through' : 'none',
-          color: item.is_checked ? 'var(--charcoal-soft)' : 'var(--charcoal)',
-        }}
+        style={{ ...styles.rowLabel, textDecoration: item.is_checked ? 'line-through' : 'none', color: item.is_checked ? 'var(--charcoal-soft)' : 'var(--charcoal)' }}
         onClick={() => onToggle(item)}
       >
         {item.name}
@@ -180,14 +140,12 @@ function ListRow({ item, onToggle, onRemove, onUpdateQuantity }) {
         {lineTotal != null && (
           <span style={styles.rowPrice} className="mono">
             ${lineTotal.toFixed(2)}
-            {qty > 1 && (
-              <span style={styles.unitPrice}> (${Number(item.est_price).toFixed(2)} ea)</span>
-            )}
+            {qty > 1 && <span style={styles.unitPrice}> (${Number(item.est_price).toFixed(2)} ea)</span>}
           </span>
         )}
       </div>
 
-      <button style={styles.removeBtn} onClick={() => onRemove(item.id)} aria-label={`Remove ${item.name}`}>×</button>
+      <button style={styles.removeBtn} onClick={() => onRemove(item.id)}>×</button>
     </div>
   )
 }
@@ -202,8 +160,30 @@ function CheckIcon() {
 
 const styles = {
   page: { display: 'flex', flexDirection: 'column', height: '100%', flex: 1, minHeight: 0 },
-  header: { padding: '20px 20px 12px', borderBottom: '1px solid var(--line)', background: 'var(--chalk)' },
-  headerTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  switcher: {
+    display: 'flex',
+    background: 'var(--charcoal)',
+    padding: '10px 16px',
+    gap: 8,
+  },
+  switcherBtn: {
+    flex: 1,
+    border: 'none',
+    borderRadius: 10,
+    padding: '10px 8px',
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'background 0.15s',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: '16px 20px',
+    borderBottom: '1px solid var(--line)',
+    background: 'var(--chalk)',
+  },
   title: { fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, margin: 0, color: 'var(--charcoal)' },
   subtitle: { margin: '4px 0 0', fontSize: 13, color: 'var(--charcoal-soft)' },
   headerRight: { display: 'flex', alignItems: 'center', gap: 12 },
@@ -211,21 +191,15 @@ const styles = {
   totalLabel: { fontSize: 11, color: 'var(--charcoal-soft)', textTransform: 'uppercase', letterSpacing: '0.04em' },
   totalValue: { fontSize: 20, fontWeight: 500, color: 'var(--terracotta-dark)' },
   clearBtn: { border: '1px solid var(--line)', background: 'none', color: 'var(--charcoal-soft)', borderRadius: 8, padding: '6px 10px', fontSize: 12 },
-  listTabs: { display: 'flex', gap: 8, overflowX: 'auto' },
-  listTab: { border: 'none', borderRadius: 20, padding: '6px 14px', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 },
   scroll: { flex: 1, overflowY: 'auto', paddingBottom: 16 },
   sectionGroup: { marginBottom: 4 },
-  sectionHeader: {
-    position: 'sticky', top: 0, background: 'var(--charcoal)', color: 'var(--chalk)',
-    fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
-    letterSpacing: '0.03em', textTransform: 'uppercase', padding: '8px 20px', zIndex: 1,
-  },
+  sectionHeader: { position: 'sticky', top: 0, background: 'var(--charcoal)', color: 'var(--chalk)', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, letterSpacing: '0.03em', textTransform: 'uppercase', padding: '8px 20px', zIndex: 1 },
   row: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--line)' },
   checkbox: { width: 22, height: 22, borderRadius: 6, border: '2px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
   rowLabel: { flex: 1, textAlign: 'left', background: 'none', border: 'none', fontSize: 16, padding: 0 },
   rowRight: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 },
   qtyRow: { display: 'flex', alignItems: 'center', gap: 6 },
-  qtyBtn: { width: 26, height: 26, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--chalk-dim)', fontSize: 16, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--charcoal)' },
+  qtyBtn: { width: 26, height: 26, borderRadius: 6, border: '1px solid var(--line)', background: 'var(--chalk-dim)', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--charcoal)' },
   qtyNum: { fontSize: 14, fontWeight: 500, minWidth: 16, textAlign: 'center' },
   rowPrice: { fontSize: 13, color: 'var(--charcoal-soft)' },
   unitPrice: { fontSize: 11, opacity: 0.7 },
