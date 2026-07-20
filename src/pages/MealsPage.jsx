@@ -4,11 +4,13 @@ export default function MealsPage({
   meals,
   mealIngredients,
   inventory,
+  sections,
   activeList,
   onAddMealToList,
   onAddMeal,
   onUpdateMeal,
   onDeleteMeal,
+  onAddInventoryItem,
 }) {
   const [editingId, setEditingId] = useState(null)
   const [showNew, setShowNew] = useState(false)
@@ -35,11 +37,8 @@ export default function MealsPage({
 
   async function handleAddToList(meal) {
     setAddingId(meal.id)
-    try {
-      await onAddMealToList(meal)
-    } finally {
-      setAddingId(null)
-    }
+    try { await onAddMealToList(meal) }
+    finally { setAddingId(null) }
   }
 
   return (
@@ -53,7 +52,7 @@ export default function MealsPage({
         {meals.length === 0 && (
           <div style={styles.empty}>
             <p style={styles.emptyTitle}>No meals yet</p>
-            <p style={styles.emptyBody}>Tap "+ Meal" to add your first recipe. When you're ready to cook, tap "Add to list" and all the ingredients go straight to your active list.</p>
+            <p style={styles.emptyBody}>Tap "+ Meal" to add your first recipe. When you are ready to cook, tap "Add to list" and all the ingredients go straight to your active list.</p>
           </div>
         )}
 
@@ -64,35 +63,36 @@ export default function MealsPage({
 
           if (editingId === meal.id) {
             return (
-              <MealForm
-                key={meal.id}
-                meal={meal}
-                existingIngredients={ings}
-                inventory={inventory}
-                onSave={async (name, notes, ingredients) => {
-                  await onUpdateMeal(meal.id, name, notes, ingredients)
-                  setEditingId(null)
-                }}
-                onCancel={() => setEditingId(null)}
-                onDelete={async () => {
-                  await onDeleteMeal(meal.id)
-                  setEditingId(null)
-                }}
-              />
+              <div key={meal.id} style={styles.mealCard}>
+                <MealForm
+                  meal={meal}
+                  existingIngredients={ings}
+                  inventory={inventory}
+                  sections={sections}
+                  onAddInventoryItem={onAddInventoryItem}
+                  onSave={async (name, notes, ingredients) => {
+                    await onUpdateMeal(meal.id, name, notes, ingredients)
+                    setEditingId(null)
+                  }}
+                  onCancel={() => setEditingId(null)}
+                  onDelete={async () => {
+                    await onDeleteMeal(meal.id)
+                    setEditingId(null)
+                  }}
+                />
+              </div>
             )
           }
 
           return (
             <div key={meal.id} style={styles.mealCard}>
               <div style={styles.mealTop}>
-                <div>
+                <div style={{ flex: 1 }}>
                   <p style={styles.mealName}>{meal.name}</p>
                   {meal.notes && <p style={styles.mealNotes}>{meal.notes}</p>}
                 </div>
                 <div style={styles.mealTopRight}>
-                  {cost > 0 && (
-                    <span style={styles.mealCost} className="mono">${cost.toFixed(2)}</span>
-                  )}
+                  {cost > 0 && <span style={styles.mealCost} className="mono">${cost.toFixed(2)}</span>}
                   <button style={styles.editBtn} onClick={() => setEditingId(meal.id)}>Edit</button>
                 </div>
               </div>
@@ -103,7 +103,7 @@ export default function MealsPage({
                     const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
                     return (
                       <span key={ing.id} style={styles.ingChip}>
-                        {ing.quantity > 1 && <span style={styles.ingQty}>{ing.quantity}× </span>}
+                        {ing.quantity > 1 && <span style={styles.ingQty}>{ing.quantity}x </span>}
                         {item?.name || ing.name}
                       </span>
                     )
@@ -112,14 +112,11 @@ export default function MealsPage({
               )}
 
               <button
-                style={{
-                  ...styles.addToListBtn,
-                  opacity: isAdding ? 0.6 : 1,
-                }}
+                style={{ ...styles.addToListBtn, opacity: isAdding ? 0.6 : 1 }}
                 onClick={() => handleAddToList(meal)}
                 disabled={isAdding}
               >
-                {isAdding ? 'Adding…' : `Add to ${activeList?.name || 'list'} →`}
+                {isAdding ? 'Adding...' : 'Add to ' + (activeList?.name || 'list') + ' ->'}
               </button>
             </div>
           )
@@ -130,6 +127,8 @@ export default function MealsPage({
         <Modal onClose={() => setShowNew(false)}>
           <MealForm
             inventory={inventory}
+            sections={sections}
+            onAddInventoryItem={onAddInventoryItem}
             onSave={async (name, notes, ingredients) => {
               await onAddMeal(name, notes, ingredients)
               setShowNew(false)
@@ -142,7 +141,7 @@ export default function MealsPage({
   )
 }
 
-function MealForm({ meal, existingIngredients = [], inventory, onSave, onCancel, onDelete }) {
+function MealForm({ meal, existingIngredients = [], inventory, sections, onAddInventoryItem, onSave, onCancel, onDelete }) {
   const [name, setName] = useState(meal?.name || '')
   const [notes, setNotes] = useState(meal?.notes || '')
   const [ingredients, setIngredients] = useState(() =>
@@ -155,12 +154,20 @@ function MealForm({ meal, existingIngredients = [], inventory, onSave, onCancel,
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showAddInventory, setShowAddInventory] = useState(false)
+  const [newItemName, setNewItemName] = useState('')
+  const [newItemSection, setNewItemSection] = useState(sections[0]?.id || '')
+  const [addingItem, setAddingItem] = useState(false)
+
+  const inventoryById = useMemo(() => new Map(inventory.map((i) => [i.id, i])), [inventory])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return []
     return inventory.filter((i) => i.name.toLowerCase().includes(q)).slice(0, 8)
   }, [search, inventory])
+
+  const noResults = search.trim().length > 1 && filtered.length === 0
 
   function addIngredient(item) {
     const exists = ingredients.find((i) => i.inventory_item_id === item.id)
@@ -182,6 +189,26 @@ function MealForm({ meal, existingIngredients = [], inventory, onSave, onCancel,
     }
   }
 
+  async function handleAddNewInventoryItem() {
+    if (!newItemName.trim()) return
+    setAddingItem(true)
+    try {
+      const newItem = await onAddInventoryItem({
+        name: newItemName.trim(),
+        section_id: newItemSection || null,
+        est_price: null,
+        price_updated_at: null,
+        price_is_estimate: true,
+        is_staple: false,
+      })
+      addIngredient(newItem)
+      setShowAddInventory(false)
+      setNewItemName('')
+    } finally {
+      setAddingItem(false)
+    }
+  }
+
   async function handleSave() {
     if (!name.trim()) return
     setSaving(true)
@@ -189,41 +216,31 @@ function MealForm({ meal, existingIngredients = [], inventory, onSave, onCancel,
     setSaving(false)
   }
 
-  const inventoryById = useMemo(() => new Map(inventory.map((i) => [i.id, i])), [inventory])
-
   return (
     <div style={styles.form}>
       <p style={styles.formTitle}>{meal ? 'Edit meal' : 'New meal'}</p>
 
       <label style={styles.fieldLabel}>
         Meal name
-        <input
-          autoFocus
-          style={styles.input}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Chicken Stir Fry"
-        />
+        <input autoFocus style={styles.input} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Chicken Stir Fry" />
       </label>
 
       <label style={styles.fieldLabel}>
         Notes (optional)
-        <input
-          style={styles.input}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="e.g. serves 4, weeknight favorite"
-        />
+        <input style={styles.input} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. serves 4, weeknight favorite" />
       </label>
 
-      <div style={styles.fieldLabel}>
-        Ingredients
-        <input
-          style={styles.input}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search inventory to add…"
-        />
+      <div>
+        <label style={styles.fieldLabel}>
+          Add ingredients
+          <input
+            style={styles.input}
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setShowAddInventory(false) }}
+            placeholder="Search inventory..."
+          />
+        </label>
+
         {filtered.length > 0 && (
           <div style={styles.dropdown}>
             {filtered.map((item) => (
@@ -233,7 +250,49 @@ function MealForm({ meal, existingIngredients = [], inventory, onSave, onCancel,
             ))}
           </div>
         )}
+
+        {noResults && !showAddInventory && (
+          <div style={styles.dropdown}>
+            <div style={styles.noResults}>No match for "{search.trim()}"</div>
+            <button
+              style={styles.dropdownAddBtn}
+              onClick={() => {
+                setNewItemName(search.trim())
+                setShowAddInventory(true)
+                setSearch('')
+              }}
+            >
+              + Add "{search.trim()}" to inventory
+            </button>
+          </div>
+        )}
       </div>
+
+      {showAddInventory && (
+        <div style={styles.addInventoryBox}>
+          <p style={styles.addInventoryTitle}>New inventory item</p>
+          <label style={styles.fieldLabel}>
+            Name
+            <input autoFocus style={styles.input} value={newItemName} onChange={(e) => setNewItemName(e.target.value)} />
+          </label>
+          <label style={styles.fieldLabel}>
+            Aisle
+            <select style={styles.input} value={newItemSection} onChange={(e) => setNewItemSection(e.target.value)}>
+              <option value="">No aisle</option>
+              {sections.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </label>
+          <p style={styles.addInventoryHint}>Price can be added later in Manage.</p>
+          <div style={styles.formActions}>
+            <button style={styles.modalCancel} onClick={() => setShowAddInventory(false)}>Cancel</button>
+            <button style={styles.modalConfirm} onClick={handleAddNewInventoryItem} disabled={addingItem || !newItemName.trim()}>
+              {addingItem ? 'Adding...' : 'Add & use'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {ingredients.length > 0 && (
         <div style={styles.ingEditList}>
@@ -243,7 +302,7 @@ function MealForm({ meal, existingIngredients = [], inventory, onSave, onCancel,
               <div key={idx} style={styles.ingEditRow}>
                 <span style={styles.ingEditName}>{item?.name || ing.name}</span>
                 <div style={styles.qtyRow}>
-                  <button style={styles.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity - 1)}>−</button>
+                  <button style={styles.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity - 1)}>-</button>
                   <span style={styles.qtyNum} className="mono">{ing.quantity}</span>
                   <button style={styles.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity + 1)}>+</button>
                 </div>
@@ -266,7 +325,7 @@ function MealForm({ meal, existingIngredients = [], inventory, onSave, onCancel,
           <div style={styles.formActions}>
             <button style={styles.modalCancel} onClick={onCancel}>Cancel</button>
             <button style={styles.modalConfirm} onClick={handleSave} disabled={saving || !name.trim()}>
-              {saving ? 'Saving…' : meal ? 'Save' : 'Add meal'}
+              {saving ? 'Saving...' : meal ? 'Save' : 'Add meal'}
             </button>
           </div>
           {meal && (
@@ -310,13 +369,18 @@ const styles = {
   addToListBtn: { width: '100%', border: 'none', background: 'var(--terracotta)', color: '#fff', borderRadius: 8, padding: '10px', fontSize: 14, fontWeight: 600 },
   form: { display: 'flex', flexDirection: 'column', gap: 14, padding: '4px 20px 8px' },
   formTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, margin: 0 },
-  fieldLabel: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)', position: 'relative' },
+  fieldLabel: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
   input: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--line)', fontSize: 15, background: '#fff', color: 'var(--charcoal)' },
-  dropdown: { position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid var(--line)', borderRadius: 8, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', marginTop: 4 },
+  dropdown: { background: '#fff', border: '1px solid var(--line)', borderRadius: 8, marginTop: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', overflow: 'hidden' },
   dropdownItem: { width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: 14, borderBottom: '1px solid var(--line)', color: 'var(--charcoal)' },
+  noResults: { padding: '10px 12px', fontSize: 13, color: 'var(--charcoal-soft)', borderBottom: '1px solid var(--line)' },
+  dropdownAddBtn: { width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: 14, color: 'var(--terracotta-dark)', fontWeight: 600 },
+  addInventoryBox: { background: 'var(--chalk-dim)', borderRadius: 10, padding: '14px', display: 'flex', flexDirection: 'column', gap: 12 },
+  addInventoryTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, margin: 0 },
+  addInventoryHint: { fontSize: 12, color: 'var(--charcoal-soft)', margin: 0 },
   ingEditList: { display: 'flex', flexDirection: 'column', gap: 8 },
   ingEditRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--chalk-dim)', borderRadius: 8, padding: '8px 12px' },
-  ingEditName: { fontSize: 14, color: 'var(--charcoal)' },
+  ingEditName: { fontSize: 14, color: 'var(--charcoal)', flex: 1 },
   qtyRow: { display: 'flex', alignItems: 'center', gap: 6 },
   qtyBtn: { width: 26, height: 26, borderRadius: 6, border: '1px solid var(--line)', background: '#fff', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
   qtyNum: { fontSize: 14, fontWeight: 500, minWidth: 16, textAlign: 'center' },
