@@ -13,35 +13,17 @@ function AppShell() {
   const [tab, setTab] = useState('list')
 
   const {
-    sections,
-    inventory,
-    lists,
-    activeListId,
-    setActiveListId,
-    listItems,
-    meals,
-    mealIngredients,
-    loading: dataLoading,
-    error,
-    addToList,
-    addMealToList,
-    updateQuantity,
-    toggleChecked,
-    removeFromList,
-    clearList,
-    addInventoryItem,
-    updateInventoryItem,
-    deleteInventoryItem,
-    addSection,
-    addMeal,
-    updateMeal,
-    deleteMeal,
+    sections, inventory, lists, activeListId, setActiveListId, listItems,
+    meals, mealIngredients, loading: dataLoading, error,
+    addToList, addMealToList, updateQuantity, toggleChecked, removeFromList, clearList,
+    addInventoryItem, updateInventoryItem, deleteInventoryItem, addSection,
+    addMeal, updateMeal, deleteMeal,
   } = useStoreData()
 
-  if (authLoading) return <FullScreenMessage text="Loading…" />
+  if (authLoading) return <FullScreenMessage text="Loading..." />
   if (!user) return <AuthPage />
-  if (dataLoading) return <FullScreenMessage text="Loading your store…" />
-  if (error) return <FullScreenMessage text={`Something went wrong: ${error.message}`} />
+  if (dataLoading) return <FullScreenMessage text="Loading your store..." />
+  if (error) return <FullScreenMessage text={'Something went wrong: ' + error.message} />
 
   const activeList = lists.find((l) => l.id === activeListId) || null
 
@@ -50,46 +32,32 @@ function AppShell() {
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {tab === 'list' && (
           <ListPage
-            sections={sections}
-            listItems={listItems}
-            lists={lists}
-            activeListId={activeListId}
-            onSwitchList={setActiveListId}
-            onToggle={toggleChecked}
-            onRemove={removeFromList}
-            onClear={clearList}
-            onUpdateQuantity={updateQuantity}
+            sections={sections} listItems={listItems} lists={lists}
+            activeListId={activeListId} onSwitchList={setActiveListId}
+            onToggle={toggleChecked} onRemove={removeFromList}
+            onClear={clearList} onUpdateQuantity={updateQuantity}
           />
         )}
         {tab === 'inventory' && (
           <InventoryPage
-            sections={sections}
-            inventory={inventory}
-            listItems={listItems}
-            activeList={activeList}
-            onAddToList={addToList}
+            sections={sections} inventory={inventory} listItems={listItems}
+            activeList={activeList} onAddToList={addToList}
           />
         )}
         {tab === 'meals' && (
           <MealsPage
-            meals={meals}
-            mealIngredients={mealIngredients}
-            inventory={inventory}
-            activeList={activeList}
-            onAddMealToList={addMealToList}
-            onAddMeal={addMeal}
-            onUpdateMeal={updateMeal}
-            onDeleteMeal={deleteMeal}
+            meals={meals} mealIngredients={mealIngredients}
+            inventory={inventory} sections={sections} activeList={activeList}
+            onAddMealToList={addMealToList} onAddMeal={addMeal}
+            onUpdateMeal={updateMeal} onDeleteMeal={deleteMeal}
+            onAddInventoryItem={addInventoryItem}
           />
         )}
         {tab === 'manage' && (
           <ManagePage
-            sections={sections}
-            inventory={inventory}
-            onAddItem={addInventoryItem}
-            onUpdateItem={updateInventoryItem}
-            onDeleteItem={deleteInventoryItem}
-            onAddSection={addSection}
+            sections={sections} inventory={inventory}
+            onAddItem={addInventoryItem} onUpdateItem={updateInventoryItem}
+            onDeleteItem={deleteInventoryItem} onAddSection={addSection}
           />
         )}
       </div>
@@ -105,9 +73,7 @@ function FullScreenMessage({ text }) {
       height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'var(--chalk)', color: 'var(--charcoal-soft)',
       fontFamily: 'var(--font-body)', padding: 24, textAlign: 'center',
-    }}>
-      {text}
-    </div>
+    }}>{text}</div>
   )
 }
 
@@ -118,9 +84,5 @@ const signOutStyle = {
 }
 
 export default function App() {
-  return (
-    <AuthProvider>
-      <AppShell />
-    </AuthProvider>
-  )
+  return <AuthProvider><AppShell /></AuthProvider>
 }
