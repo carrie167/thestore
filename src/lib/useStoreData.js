@@ -8,6 +8,8 @@ export function useStoreData() {
   const [inventory, setInventory] = useState([])
   const [lists, setLists] = useState([])
   const [listItems, setListItems] = useState([])
+  const [meals, setMeals] = useState([])
+  const [mealIngredients, setMealIngredients] = useState([])
   const [activeListId, setActiveListId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -16,14 +18,16 @@ export function useStoreData() {
     setLoading(true)
     setError(null)
 
-    const [sectionsRes, inventoryRes, listsRes] = await Promise.all([
+    const [sectionsRes, inventoryRes, listsRes, mealsRes, ingredientsRes] = await Promise.all([
       supabase.from('store_sections').select('*').order('sort_order'),
       supabase.from('inventory_items').select('*').order('name'),
       supabase.from('lists').select('*').order('created_at'),
+      supabase.from('meals').select('*').order('name'),
+      supabase.from('meal_ingredients').select('*'),
     ])
 
-    if (sectionsRes.error || inventoryRes.error || listsRes.error) {
-      setError(sectionsRes.error || inventoryRes.error || listsRes.error)
+    if (sectionsRes.error || inventoryRes.error || listsRes.error || mealsRes.error || ingredientsRes.error) {
+      setError(sectionsRes.error || inventoryRes.error || listsRes.error || mealsRes.error || ingredientsRes.error)
       setLoading(false)
       return
     }
@@ -31,16 +35,15 @@ export function useStoreData() {
     setSections(sectionsRes.data)
     setInventory(inventoryRes.data)
     setLists(listsRes.data)
+    setMeals(mealsRes.data)
+    setMealIngredients(ingredientsRes.data)
 
-    // Default to the shared list if we don't have an active selection yet.
     setActiveListId((current) => {
       if (current && listsRes.data.some((l) => l.id === current)) return current
       const shared = listsRes.data.find((l) => l.kind === 'shared')
       return shared?.id || listsRes.data[0]?.id || null
     })
 
-    // Load items across every list we can access (shared + personal),
-    // so switching tabs is instant with no extra round-trip.
     const accessibleListIds = listsRes.data.map((l) => l.id)
     if (accessibleListIds.length > 0) {
       const itemsRes = await supabase
@@ -65,9 +68,6 @@ export function useStoreData() {
     loadAll()
   }, [user, loadAll])
 
-  // Real-time sync on list_items — this is what makes checks/adds
-  // show up live between you and your daughter, across both the shared
-  // list and (if you ever view each other's) personal lists.
   useEffect(() => {
     if (!user) return
 
@@ -90,12 +90,10 @@ export function useStoreData() {
       })
       .subscribe()
 
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    return () => { supabase.removeChannel(channel) }
   }, [user])
 
-  // ── Mutations ──
+  // ── Helpers ──
 
   async function getHouseholdId() {
     const { data, error } = await supabase
@@ -108,8 +106,19 @@ export function useStoreData() {
     return data.household_id
   }
 
+  // ── List item mutations ──
+
   async function addToList(inventoryItem, listId = activeListId) {
     if (!listId) throw new Error('No active list selected')
+
+    // If item already on this list, just bump quantity
+    const existing = listItems.find(
+      (i) => i.list_id === listId && i.inventory_item_id === inventoryItem.id
+    )
+    if (existing) {
+      return updateQuantity(existing, existing.quantity + 1)
+    }
+
     const { data, error } = await supabase
       .from('list_items')
       .insert({
@@ -118,12 +127,57 @@ export function useStoreData() {
         name: inventoryItem.name,
         section_id: inventoryItem.section_id,
         est_price: inventoryItem.est_price,
+        quantity: 1,
         added_by: user.id,
       })
       .select()
       .single()
     if (error) throw error
     setListItems((current) => [...current, data])
+  }
+
+  async function addMealToList(meal, listId = activeListId) {
+    if (!listId) throw new Error('No active list selected')
+    const ingredients = mealIngredients.filter((i) => i.meal_id === meal.id)
+    const inventoryMap = new Map(inventory.map((i) => [i.id, i]))
+
+    for (const ing of ingredients) {
+      const invItem = ing.inventory_item_id ? inventoryMap.get(ing.inventory_item_id) : null
+      const existing = listItems.find(
+        (i) => i.list_id === listId && i.inventory_item_id === ing.inventory_item_id
+      )
+      if (existing) {
+        await updateQuantity(existing, existing.quantity + ing.quantity)
+      } else {
+        const { data, error } = await supabase
+          .from('list_items')
+          .insert({
+            list_id: listId,
+            inventory_item_id: ing.inventory_item_id || null,
+            name: invItem?.name || ing.name,
+            section_id: invItem?.section_id || null,
+            est_price: invItem?.est_price || null,
+            quantity: ing.quantity,
+            added_by: user.id,
+          })
+          .select()
+          .single()
+        if (error) throw error
+        setListItems((current) => [...current, data])
+      }
+    }
+  }
+
+  async function updateQuantity(listItem, newQty) {
+    if (newQty < 1) return removeFromList(listItem.id)
+    const { data, error } = await supabase
+      .from('list_items')
+      .update({ quantity: newQty })
+      .eq('id', listItem.id)
+      .select()
+      .single()
+    if (error) throw error
+    setListItems((current) => current.map((i) => (i.id === data.id ? data : i)))
   }
 
   async function toggleChecked(listItem) {
@@ -150,6 +204,8 @@ export function useStoreData() {
     if (error) throw error
     setListItems((current) => current.filter((i) => !ids.includes(i.id)))
   }
+
+  // ── Inventory mutations ──
 
   async function addInventoryItem(item) {
     const household_id = await getHouseholdId()
@@ -196,7 +252,63 @@ export function useStoreData() {
     return data
   }
 
-  // Items belonging to the currently active list (what ListPage renders).
+  // ── Meal mutations ──
+
+  async function addMeal(name, notes, ingredients) {
+    // ingredients: [{ inventory_item_id, name, quantity }]
+    const household_id = await getHouseholdId()
+    const { data: meal, error: mealError } = await supabase
+      .from('meals')
+      .insert({ household_id, name, notes })
+      .select()
+      .single()
+    if (mealError) throw mealError
+
+    if (ingredients.length > 0) {
+      const rows = ingredients.map((ing) => ({ meal_id: meal.id, ...ing }))
+      const { data: ings, error: ingError } = await supabase
+        .from('meal_ingredients')
+        .insert(rows)
+        .select()
+      if (ingError) throw ingError
+      setMealIngredients((current) => [...current, ...ings])
+    }
+
+    setMeals((current) => [...current, meal].sort((a, b) => a.name.localeCompare(b.name)))
+    return meal
+  }
+
+  async function updateMeal(id, name, notes, ingredients) {
+    const { data: meal, error: mealError } = await supabase
+      .from('meals')
+      .update({ name, notes })
+      .eq('id', id)
+      .select()
+      .single()
+    if (mealError) throw mealError
+
+    // Replace all ingredients
+    await supabase.from('meal_ingredients').delete().eq('meal_id', id)
+    let newIngs = []
+    if (ingredients.length > 0) {
+      const rows = ingredients.map((ing) => ({ meal_id: id, ...ing }))
+      const { data, error } = await supabase.from('meal_ingredients').insert(rows).select()
+      if (error) throw error
+      newIngs = data
+    }
+
+    setMeals((current) => current.map((m) => (m.id === id ? meal : m)).sort((a, b) => a.name.localeCompare(b.name)))
+    setMealIngredients((current) => [...current.filter((i) => i.meal_id !== id), ...newIngs])
+    return meal
+  }
+
+  async function deleteMeal(id) {
+    const { error } = await supabase.from('meals').delete().eq('id', id)
+    if (error) throw error
+    setMeals((current) => current.filter((m) => m.id !== id))
+    setMealIngredients((current) => current.filter((i) => i.meal_id !== id))
+  }
+
   const activeListItems = listItems.filter((i) => i.list_id === activeListId)
 
   return {
@@ -206,11 +318,14 @@ export function useStoreData() {
     activeListId,
     setActiveListId,
     listItems: activeListItems,
-    allListItemsByInventoryId: listItems, // used by Inventory page to know "is this in ANY of my lists"
+    meals,
+    mealIngredients,
     loading,
     error,
     reload: loadAll,
     addToList,
+    addMealToList,
+    updateQuantity,
     toggleChecked,
     removeFromList,
     clearList,
@@ -218,5 +333,8 @@ export function useStoreData() {
     updateInventoryItem,
     deleteInventoryItem,
     addSection,
+    addMeal,
+    updateMeal,
+    deleteMeal,
   }
 }
