@@ -41,6 +41,7 @@ function AppShell() {
         {tab === 'inventory' && (
           <InventoryPage
             sections={sections} inventory={inventory} listItems={listItems}
+            lists={lists} activeListId={activeListId} onSwitchList={setActiveListId}
             activeList={activeList} onAddToList={addToList}
             onAddInventoryItem={addInventoryItem}
             onUpdateInventoryItem={updateInventoryItem}
@@ -60,8 +61,12 @@ function AppShell() {
           />
         )}
       </div>
-      <NavBar active={tab} onChange={setTab} />
-      <button onClick={signOut} style={signOutStyle}>Sign out</button>
+
+      {/* Sign out tucked into the nav bar area — can't overlap page content */}
+      <div style={styles.footer}>
+        <NavBar active={tab} onChange={setTab} />
+        <button onClick={signOut} style={styles.signOut}>Sign out</button>
+      </div>
     </div>
   )
 }
@@ -74,10 +79,23 @@ function FullScreenMessage({ text }) {
   )
 }
 
-const signOutStyle = {
-  position: 'fixed', top: 8, right: 12, border: 'none',
-  background: 'rgba(0,0,0,0.06)', color: 'var(--charcoal-soft)',
-  fontSize: 11, borderRadius: 6, padding: '4px 8px', zIndex: 5,
+const styles = {
+  footer: {
+    borderTop: '1px solid var(--line)',
+    background: 'var(--chalk)',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  signOut: {
+    border: 'none',
+    background: 'none',
+    color: 'var(--charcoal-soft)',
+    fontSize: 11,
+    padding: '6px 0 8px',
+    textAlign: 'center',
+    textDecoration: 'underline',
+    paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
+  },
 }
 
 export default function App() {
