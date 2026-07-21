@@ -5,44 +5,48 @@ import AuthPage from './pages/AuthPage'
 import ListPage from './pages/ListPage'
 import InventoryPage from './pages/InventoryPage'
 import MealsPage from './pages/MealsPage'
-import NavBar from './components/NavBar'
+import TopNav from './components/TopNav'
 
 function AppShell() {
   const { user, loading: authLoading, signOut } = useAuth()
   const [tab, setTab] = useState('list')
 
   const {
-    sections, inventory, lists, activeListId, setActiveListId, listItems,
-    meals, mealIngredients, loading: dataLoading, error,
-    addToList, addMealToList, updateQuantity, toggleChecked, removeFromList, clearList,
+    sections, inventory, lists, activeListId, activeList, setActiveListId,
+    listItems, meals, mealIngredients, loading, error,
+    createList, deleteList, updateList,
+    addInventoryItemToList, addFreetextItemToList, addMealToList,
+    updateQuantity, toggleChecked, removeFromList, clearList,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
     addMeal, updateMeal, deleteMeal,
   } = useStoreData()
 
-  if (authLoading) return <FullScreenMessage text="Loading..." />
+  if (authLoading) return <Splash text="Loading…" />
   if (!user) return <AuthPage />
-  if (dataLoading) return <FullScreenMessage text="Loading your store..." />
-  if (error) return <FullScreenMessage text={'Something went wrong: ' + error.message} />
-
-  const activeList = lists.find((l) => l.id === activeListId) || null
+  if (loading) return <Splash text="Loading your store…" />
+  if (error) return <Splash text={`Something went wrong: ${error.message}`} />
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <TopNav active={tab} onChange={setTab} />
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflowY: tab === 'list' || tab === 'meals' ? 'hidden' : 'hidden' }}>
         {tab === 'list' && (
           <ListPage
             sections={sections} listItems={listItems} lists={lists}
-            activeListId={activeListId} onSwitchList={setActiveListId}
+            activeListId={activeListId} activeList={activeList}
+            onSwitchList={setActiveListId}
             onToggle={toggleChecked} onRemove={removeFromList}
             onClear={clearList} onUpdateQuantity={updateQuantity}
+            onCreateList={createList} onDeleteList={deleteList}
+            onAddFreetext={addFreetextItemToList}
           />
         )}
         {tab === 'inventory' && (
           <InventoryPage
             sections={sections} inventory={inventory} listItems={listItems}
-            lists={lists} activeListId={activeListId} onSwitchList={setActiveListId}
-            activeList={activeList} onAddToList={addToList}
+            activeList={activeList}
+            onAddToList={addInventoryItemToList}
             onAddInventoryItem={addInventoryItem}
             onUpdateInventoryItem={updateInventoryItem}
             onDeleteInventoryItem={deleteInventoryItem}
@@ -54,49 +58,31 @@ function AppShell() {
         {tab === 'meals' && (
           <MealsPage
             meals={meals} mealIngredients={mealIngredients}
-            inventory={inventory} sections={sections} activeList={activeList}
-            onAddMealToList={addMealToList} onAddMeal={addMeal}
-            onUpdateMeal={updateMeal} onDeleteMeal={deleteMeal}
+            inventory={inventory} sections={sections}
+            activeList={activeList}
+            onAddMealToList={addMealToList}
+            onAddMeal={addMeal} onUpdateMeal={updateMeal} onDeleteMeal={deleteMeal}
             onAddInventoryItem={addInventoryItem}
           />
         )}
       </div>
-
-      {/* Sign out tucked into the nav bar area — can't overlap page content */}
-      <div style={styles.footer}>
-        <NavBar active={tab} onChange={setTab} />
-        <button onClick={signOut} style={styles.signOut}>Sign out</button>
+      <div style={signOutWrap}>
+        <button onClick={signOut} style={signOutBtn}>Sign out</button>
       </div>
     </div>
   )
 }
 
-function FullScreenMessage({ text }) {
+function Splash({ text }) {
   return (
-    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--chalk)', color: 'var(--charcoal-soft)', fontFamily: 'var(--font-body)', padding: 24, textAlign: 'center' }}>
+    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--cream)', color: 'var(--charcoal-soft)', fontFamily: 'var(--font-body)', padding: 24, textAlign: 'center' }}>
       {text}
     </div>
   )
 }
 
-const styles = {
-  footer: {
-    borderTop: '1px solid var(--line)',
-    background: 'var(--chalk)',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  signOut: {
-    border: 'none',
-    background: 'none',
-    color: 'var(--charcoal-soft)',
-    fontSize: 11,
-    padding: '6px 0 8px',
-    textAlign: 'center',
-    textDecoration: 'underline',
-    paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
-  },
-}
+const signOutWrap = { background: '#fff', borderTop: '0.5px solid var(--cream-border)', padding: '6px 0 calc(6px + env(safe-area-inset-bottom))', textAlign: 'center' }
+const signOutBtn = { border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 11, textDecoration: 'underline' }
 
 export default function App() {
   return <AuthProvider><AppShell /></AuthProvider>
