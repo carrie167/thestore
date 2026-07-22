@@ -1,12 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
 :root {
-  /* ── Palette ── */
-  --teal:          #6BBDB5;
-  --teal-dark:     #3D9E96;
-  --teal-light:    #A0C8C2;
-  --steel:         #3D6B8A;
-  --steel-light:   #C8E8E4;
+  /* Defaults — overridden by ThemeContext on mount */
+  --primary:       #6BBDB5;
+  --primary-dark:  #3D9E96;
+  --primary-light: #A0C8C2;
+  --accent:        #3D6B8A;
+  --accent-light:  #C8E8E4;
   --sage:          #A8B87A;
   --sage-dark:     #7A9050;
   --charcoal:      #3D4442;
@@ -17,11 +17,13 @@
   --cream:         #E8EAD8;
   --cream-light:   #F4F6EC;
   --cream-border:  #D0D4B8;
-  --white:         #FFFFFF;
   --danger:        #B05848;
   --danger-light:  #F0E0D8;
+  --nav-bg:        #3D4442;
+  --nav-indicator: #6BBDB5;
+  --aisle-bg:      #3D6B8A;
+  --aisle-text:    #C8E8E4;
 
-  /* ── Fonts ── */
   --font-display: 'Fraunces', Georgia, serif;
   --font-body:    'Outfit', system-ui, sans-serif;
   --font-mono:    'DM Mono', monospace;
@@ -30,7 +32,6 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-
 html, body { margin: 0; padding: 0; }
 
 body {
@@ -41,19 +42,10 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
-#root {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
+#root { min-height: 100vh; display: flex; flex-direction: column; }
 button { font-family: var(--font-body); cursor: pointer; }
 input, select, textarea { font-family: var(--font-body); }
-
-:focus-visible {
-  outline: 2px solid var(--teal);
-  outline-offset: 2px;
-}
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
