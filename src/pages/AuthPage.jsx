@@ -6,6 +6,7 @@ export default function AuthPage() {
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [busy, setBusy] = useState(false)
@@ -28,11 +29,32 @@ export default function AuthPage() {
         <form onSubmit={handleSubmit} style={s.form}>
           <label style={s.label}>
             Email
-            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={s.input} autoComplete="email" />
+            <input
+              type="email" required value={email}
+              onChange={e => setEmail(e.target.value)}
+              style={s.input} autoComplete="email"
+            />
           </label>
           <label style={s.label}>
             Password
-            <input type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} style={s.input} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} />
+            <div style={s.passwordWrap}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required minLength={6}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                style={{ ...s.input, flex: 1, borderRight: 'none', borderRadius: '8px 0 0 8px' }}
+                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+              />
+              <button
+                type="button"
+                style={s.eyeBtn}
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
           </label>
           {error && <p style={s.error}>{error}</p>}
           {info && <p style={s.info}>{info}</p>}
@@ -41,7 +63,10 @@ export default function AuthPage() {
           </button>
         </form>
 
-        <button onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setInfo('') }} style={s.toggle}>
+        <button
+          onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setInfo('') }}
+          style={s.toggle}
+        >
           {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
         </button>
       </div>
@@ -50,15 +75,17 @@ export default function AuthPage() {
 }
 
 const s = {
-  page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--charcoal)', padding: 24 },
+  page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--nav-bg)', padding: 24 },
   card: { width: '100%', maxWidth: 380, background: 'var(--cream)', borderRadius: 16, padding: '40px 28px', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' },
   logo: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 34, margin: 0, color: 'var(--charcoal)', letterSpacing: '-0.02em' },
   tagline: { margin: '6px 0 28px', color: 'var(--charcoal-soft)', fontSize: 14 },
   form: { display: 'flex', flexDirection: 'column', gap: 16 },
   label: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
   input: { padding: '11px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 15, background: '#fff', color: 'var(--charcoal)' },
-  submit: { marginTop: 8, padding: 12, borderRadius: 8, border: 'none', background: 'var(--teal)', color: '#fff', fontWeight: 600, fontSize: 15 },
-  toggle: { marginTop: 20, background: 'none', border: 'none', color: 'var(--steel)', fontSize: 13, textDecoration: 'underline', width: '100%', textAlign: 'center' },
+  passwordWrap: { display: 'flex', alignItems: 'stretch' },
+  eyeBtn: { padding: '0 12px', border: '1px solid var(--cream-border)', borderLeft: 'none', borderRadius: '0 8px 8px 0', background: '#fff', fontSize: 16, cursor: 'pointer' },
+  submit: { marginTop: 8, padding: 12, borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 600, fontSize: 15 },
+  toggle: { marginTop: 20, background: 'none', border: 'none', color: 'var(--accent)', fontSize: 13, textDecoration: 'underline', width: '100%', textAlign: 'center' },
   error: { color: 'var(--danger)', fontSize: 13, margin: 0 },
   info: { color: 'var(--sage-dark)', fontSize: 13, margin: 0 },
 }
