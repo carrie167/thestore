@@ -71,9 +71,14 @@ export default function ListPage({
     if (!name) return
     try {
       await onAddFreetext(name, price || null, listId)
+      // Clear inputs but keep form open so you can add more
       setFreetextByList(cur => ({ ...cur, [listId]: '' }))
       setFreetextPriceByList(cur => ({ ...cur, [listId]: '' }))
-      setShowFreetextByList(cur => ({ ...cur, [listId]: false }))
+      // Re-focus the name field
+      setTimeout(() => {
+        const inputs = document.querySelectorAll('[data-freetext-input="' + listId + '"]')
+        if (inputs[0]) inputs[0].focus()
+      }, 50)
     } catch (err) {
       console.error('Quick add failed:', err)
       alert('Could not add item: ' + err.message)
@@ -186,6 +191,7 @@ export default function ListPage({
                     <div style={s.freetextBar}>
                       <input
                         autoFocus
+                        data-freetext-input={list.id}
                         style={s.freetextInput}
                         value={freetextByList[list.id] || ''}
                         onChange={e => setFreetextByList(cur => ({ ...cur, [list.id]: e.target.value }))}
@@ -311,7 +317,6 @@ function ListRow({ item, onToggle, onRemove, onUpdateQuantity }) {
         onClick={() => onToggle(item)}
       >
         {item.name}
-        {item.item_type === 'freetext' && <span style={{ fontSize: 11, color: 'var(--charcoal-soft)', fontStyle: 'italic' }}> · note</span>}
       </button>
       <div style={s.rowRight}>
         <div style={s.qtyRow}>
