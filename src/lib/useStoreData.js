@@ -62,11 +62,12 @@ export function useStoreData() {
     // Load household members with display names
     const { data: hmData } = await supabase
       .from('household_members')
-      .select('user_id, profiles(display_name)')
+      .select('user_id, profiles(display_name, theme)')
     if (hmData) {
       setHouseholdMembers(hmData.map(hm => ({
         user_id: hm.user_id,
         display_name: hm.profiles?.display_name || 'Unknown',
+          theme: hm.profiles?.theme || 'teal',
       })))
     }
 
@@ -334,6 +335,10 @@ export function useStoreData() {
     setHouseholdMembers(cur => cur.map(m => m.user_id === user.id ? { ...m, display_name: displayName } : m))
   }
 
+  async function updateTheme(themeId) {
+    await supabase.from('profiles').update({ theme: themeId }).eq('id', user.id)
+  }
+
   const activeList = lists.find(l => l.id === activeListId) || null
   const activeListItems = listItems.filter(i => i.list_id === activeListId)
   const myProfile = householdMembers.find(m => m.user_id === user?.id)
@@ -351,6 +356,6 @@ export function useStoreData() {
     addSection, updateSection, deleteSection,
     addMeal, updateMeal, deleteMeal,
     generateInviteCode, useInviteCode,
-    updateDisplayName,
+    updateDisplayName, updateTheme,
   }
 }
