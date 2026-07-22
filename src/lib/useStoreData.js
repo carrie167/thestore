@@ -341,7 +341,7 @@ export function useStoreData() {
 
   return {
     sections, inventory, lists, listMembers, activeListId, activeList, setActiveListId,
-    listItems: activeListItems, meals, mealMembers, mealIngredients,
+    listItems: activeListItems, allListItems: listItems, meals, mealMembers, mealIngredients,
     householdMembers, myProfile, otherMembers,
     loading, error, reload: loadAll,
     createList, updateList, deleteList,
