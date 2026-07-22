@@ -91,7 +91,7 @@ export default function InventoryPage({
       <div style={s.scroll}>
         {!isFiltering && staples.length > 0 && (
           <div>
-            <div style={{ ...s.aisleHeader, background: 'var(--sage-dark)' }}>★ Staples</div>
+            <div style={{ ...s.aisleHeader, background: 'var(--primary-dark)' }}>★ Staples</div>
             {staples.map(item => <InventoryRow key={item.id} item={item} inList={listedIds.has(item.id)} onAdd={onAddToList} onEdit={() => setEditingItem(item)} />)}
           </div>
         )}
@@ -174,7 +174,7 @@ function InventoryRow({ item, inList, onAdd, onEdit }) {
           <span style={s.rowPrice}>${Number(item.est_price).toFixed(2)}{item.price_is_estimate && <span style={s.est}> est.</span>}</span>
         )}
       </button>
-      <button style={{ ...s.addCircle, background: inList ? 'var(--sage)' : 'var(--teal)' }} onClick={() => onAdd(item)}>
+      <button style={{ ...s.addCircle, background: inList ? 'var(--sage-dark)' : 'var(--primary)' }} onClick={() => onAdd(item)}>
         {inList ? '✓' : '+'}
       </button>
       <button style={s.editIcon} onClick={onEdit}>✎</button>
@@ -318,7 +318,7 @@ const s = {
   stapleBtn: { border: 'none', borderRadius: 20, padding: '7px 12px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 },
   clearFilter: { border: '1px solid var(--cream-border)', background: 'none', borderRadius: 20, padding: '7px 12px', fontSize: 12, color: 'var(--charcoal-soft)', whiteSpace: 'nowrap' },
   scroll: { flex: 1, overflowY: 'auto', paddingBottom: 16 },
-  aisleHeader: { background: 'var(--steel)', padding: '6px 14px', position: 'sticky', top: 0, zIndex: 1, fontSize: 10, fontWeight: 600, color: 'var(--steel-light)', letterSpacing: '0.08em', textTransform: 'uppercase' },
+  aisleHeader: { background: 'var(--aisle-bg)', padding: '6px 14px', position: 'sticky', top: 0, zIndex: 10, fontSize: 10, fontWeight: 600, color: 'var(--aisle-text)', letterSpacing: '0.08em', textTransform: 'uppercase' },
   row: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '0.5px solid var(--cream)', background: '#fff' },
   rowMain: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2, background: 'none', border: 'none', textAlign: 'left', padding: 0 },
   rowName: { fontSize: 15, color: 'var(--charcoal)', fontFamily: 'var(--font-body)' },
