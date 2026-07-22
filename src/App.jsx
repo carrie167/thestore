@@ -26,7 +26,7 @@ function AppShell() {
     addSection, updateSection, deleteSection,
     addMeal, updateMeal, deleteMeal,
     generateInviteCode, useInviteCode,
-    updateDisplayName, updateTheme,
+    updateDisplayName, updateTheme, leaveHousehold, removeMember,
   } = useStoreData()
 
   if (authLoading) return <Splash text="Loading…" />
@@ -83,6 +83,8 @@ function AppShell() {
             onGenerateInvite={generateInviteCode}
             onUseInviteCode={useInviteCode}
             onMenuOpen={() => setSidebarOpen(true)}
+            onLeaveHousehold={leaveHousehold}
+            onRemoveMember={removeMember}
             signOut={signOut}
           />
         )}
