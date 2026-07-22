@@ -329,6 +329,62 @@ export function useStoreData() {
   }
 
   // ── Profile ──
+  async function leaveHousehold() {
+    const household_id = await getHouseholdId()
+
+    // Transfer ownership of shared lists created by this user to the first other member
+    const otherMember = otherMembers[0]
+    if (otherMember) {
+      await supabase.from('lists')
+        .update({ created_by: otherMember.user_id })
+        .eq('created_by', user.id)
+        .eq('household_id', household_id)
+        .neq('created_by', user.id) // only shared ones (those visible to others)
+
+      // Transfer shared meals too
+      await supabase.from('meals')
+        .update({ created_by: otherMember.user_id })
+        .eq('created_by', user.id)
+        .eq('household_id', household_id)
+        .in('id', (await supabase.from('meal_members').select('meal_id').then(r => r.data?.map(m => m.meal_id) || [])))
+    }
+
+    // Remove from household
+    const { error } = await supabase.from('household_members')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('household_id', household_id)
+    if (error) throw error
+
+    // Sign out so they land on a fresh state
+    await supabase.auth.signOut()
+  }
+
+  async function removeMember(memberUserId) {
+    const household_id = await getHouseholdId()
+
+    // Transfer their shared lists/meals to current user
+    await supabase.from('lists')
+      .update({ created_by: user.id })
+      .eq('created_by', memberUserId)
+      .eq('household_id', household_id)
+
+    await supabase.from('meals')
+      .update({ created_by: user.id })
+      .eq('created_by', memberUserId)
+      .eq('household_id', household_id)
+
+    // Remove from household
+    const { error } = await supabase.from('household_members')
+      .delete()
+      .eq('user_id', memberUserId)
+      .eq('household_id', household_id)
+    if (error) throw error
+
+    // Update local state
+    setHouseholdMembers(cur => cur.filter(m => m.user_id !== memberUserId))
+  }
+
   async function updateDisplayName(displayName) {
     const { error } = await supabase.from('profiles').update({ display_name: displayName }).eq('id', user.id)
     if (error) throw error
@@ -357,5 +413,6 @@ export function useStoreData() {
     addMeal, updateMeal, deleteMeal,
     generateInviteCode, useInviteCode,
     updateDisplayName, updateTheme,
+    leaveHousehold, removeMember,
   }
 }
