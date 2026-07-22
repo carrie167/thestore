@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
+import PageHeader from '../components/PageHeader'
 
 export default function InventoryPage({
   sections, inventory, listItems, activeList,
   onAddToList, onAddInventoryItem, onUpdateInventoryItem, onDeleteInventoryItem,
-  onAddSection, onUpdateSection, onDeleteSection,
+  onAddSection, onUpdateSection, onDeleteSection, onMenuOpen,
 }) {
   const [query, setQuery] = useState('')
   const [sectionFilter, setSectionFilter] = useState('')
@@ -61,14 +62,17 @@ export default function InventoryPage({
 
   return (
     <div style={s.page}>
-      <div style={s.header}>
-        <div style={s.headerTop}>
-          <h1 style={s.title}>Inventory</h1>
-          <div style={s.headerActions}>
+      <PageHeader
+        title="Inventory"
+        onMenuOpen={onMenuOpen}
+        right={
+          <div style={{ display: 'flex', gap: 8 }}>
             <button style={s.aislesBtn} onClick={() => setShowAisles(true)}>Aisles</button>
             <button style={s.addBtn} onClick={() => setShowNewItem(true)}>+ Item</button>
           </div>
-        </div>
+        }
+      />
+      <div style={s.header}>
         <p style={s.addingTo}>Adding to <strong style={{ color: 'var(--charcoal)' }}>{activeList?.name || '—'}</strong></p>
         <input style={s.search} placeholder="Search items…" value={query} onChange={e => setQuery(e.target.value)} />
         <div style={s.filterRow}>
@@ -304,12 +308,9 @@ function Sheet({ children, onClose }) {
 
 const s = {
   page: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, background: 'var(--cream)' },
-  header: { background: '#fff', padding: '14px 14px 10px', borderBottom: '0.5px solid var(--cream-border)' },
-  headerTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  title: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, margin: 0, color: 'var(--charcoal)', letterSpacing: '-0.02em' },
-  headerActions: { display: 'flex', gap: 8 },
-  aislesBtn: { border: '1px solid var(--cream-border)', background: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, color: 'var(--charcoal)' },
-  addBtn: { border: 'none', background: 'var(--teal)', color: '#fff', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600 },
+  header: { background: '#fff', padding: '10px 14px', borderBottom: '0.5px solid var(--cream-border)' },
+  aislesBtn: { border: '1px solid rgba(255,255,255,0.4)', background: 'none', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600, color: '#fff' },
+  addBtn: { border: 'none', background: 'var(--sage)', color: '#fff', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600 },
   addingTo: { fontSize: 13, color: 'var(--charcoal-soft)', margin: '0 0 10px' },
   search: { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--cream-border)', fontSize: 15, background: 'var(--cream-light)', marginBottom: 8, boxSizing: 'border-box' },
   filterRow: { display: 'flex', gap: 8, alignItems: 'center', paddingBottom: 2 },
