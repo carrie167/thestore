@@ -66,13 +66,18 @@ export default function ListPage({
   }
 
   async function handleAddFreetext(listId) {
-    const name = freetextByList[listId]?.trim()
+    const name = (freetextByList[listId] || '').trim()
     const price = freetextPriceByList[listId]
     if (!name) return
-    await onAddFreetext(name, price, listId)
-    setFreetextByList(cur => ({ ...cur, [listId]: '' }))
-    setFreetextPriceByList(cur => ({ ...cur, [listId]: '' }))
-    setShowFreetextByList(cur => ({ ...cur, [listId]: false }))
+    try {
+      await onAddFreetext(name, price || null, listId)
+      setFreetextByList(cur => ({ ...cur, [listId]: '' }))
+      setFreetextPriceByList(cur => ({ ...cur, [listId]: '' }))
+      setShowFreetextByList(cur => ({ ...cur, [listId]: false }))
+    } catch (err) {
+      console.error('Quick add failed:', err)
+      alert('Could not add item: ' + err.message)
+    }
   }
 
   function startEdit(list) {
