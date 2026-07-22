@@ -267,9 +267,9 @@ export function useStoreData() {
   }
 
   // ── Meal mutations ──
-  async function addMeal(name, notes, ingredients, sharedWithUserIds = []) {
+  async function addMeal(name, notes, ingredients, sharedWithUserIds = [], mealType = null) {
     const household_id = await getHouseholdId()
-    const { data: meal, error: mealErr } = await supabase.from('meals').insert({ household_id, name, notes, created_by: user.id }).select().single()
+    const { data: meal, error: mealErr } = await supabase.from('meals').insert({ household_id, name, notes, meal_type: mealType || null, created_by: user.id }).select().single()
     if (mealErr) throw mealErr
     if (ingredients.length > 0) {
       const { data: ings, error: ingErr } = await supabase.from('meal_ingredients').insert(ingredients.map(ing => ({ meal_id: meal.id, ...ing }))).select()
@@ -285,8 +285,8 @@ export function useStoreData() {
     return meal
   }
 
-  async function updateMeal(id, name, notes, ingredients, sharedWithUserIds = []) {
-    const { data: meal, error: mealErr } = await supabase.from('meals').update({ name, notes }).eq('id', id).select().single()
+  async function updateMeal(id, name, notes, mealType, ingredients, sharedWithUserIds = []) {
+    const { data: meal, error: mealErr } = await supabase.from('meals').update({ name, notes, meal_type: mealType || null }).eq('id', id).select().single()
     if (mealErr) throw mealErr
     await supabase.from('meal_ingredients').delete().eq('meal_id', id)
     let newIngs = []
