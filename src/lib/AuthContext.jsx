@@ -12,12 +12,25 @@ export function AuthProvider({ children }) {
     return () => listener.subscription.unsubscribe()
   }, [])
 
+  async function signUp(email, password) {
+    const result = await supabase.auth.signUp({ email, password })
+    if (!result.error && result.data?.user) {
+      // Create profile immediately — don't rely on trigger alone
+      const displayName = email.split('@')[0]
+      await supabase.from('profiles').upsert({
+        id: result.data.user.id,
+        display_name: displayName,
+      })
+    }
+    return result
+  }
+
   return (
     <AuthContext.Provider value={{
       session,
       user: session?.user ?? null,
       loading: session === undefined,
-      signUp: (email, password) => supabase.auth.signUp({ email, password }),
+      signUp,
       signIn: (email, password) => supabase.auth.signInWithPassword({ email, password }),
       signOut: () => supabase.auth.signOut(),
     }}>
