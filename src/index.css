@@ -1,28 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
 :root {
-  /* Defaults — overridden by ThemeContext on mount */
-  --primary:       #6BBDB5;
-  --primary-dark:  #3D9E96;
-  --primary-light: #A0C8C2;
-  --accent:        #3D6B8A;
-  --accent-light:  #C8E8E4;
-  --sage:          #A8B87A;
-  --sage-dark:     #7A9050;
-  --charcoal:      #3D4442;
-  --charcoal-soft: #7A8A7A;
-  --tan:           #C4A878;
-  --tan-light:     #F5F0E4;
-  --tan-border:    #E0D8C8;
-  --cream:         #E8EAD8;
-  --cream-light:   #F4F6EC;
-  --cream-border:  #D0D4B8;
-  --danger:        #B05848;
-  --danger-light:  #F0E0D8;
-  --nav-bg:        #3D4442;
-  --nav-indicator: #6BBDB5;
-  --aisle-bg:      #3D6B8A;
-  --aisle-text:    #C8E8E4;
+  --primary:        #4C7683;
+  --primary-dark:   #355965;
+  --primary-light:  #BAD9CE;
+  --accent:         #4C7683;
+  --accent-light:   #CBE9E5;
+  --sage:           #DDEEC1;
+  --sage-dark:      #7B9E68;
+  --charcoal:       #4A5254;
+  --charcoal-soft:  #7B8587;
+  --tan:            #E5B64A;
+  --tan-light:      #FDF6E8;
+  --tan-border:     #EFCB97;
+  --cream:          #F5F6F7;
+  --cream-light:    #FFFFFF;
+  --cream-border:   #D9DFE1;
+  --danger:         #B05848;
+  --danger-light:   #F0E0D8;
+  --nav-bg:         #4C7683;
+  --nav-indicator:  #E5B64A;
+  --aisle-bg:       #355965;
+  --aisle-text:     #BAD9CE;
+  --sidebar-bg:     #BAD9CE;
+  --card-bg:        #FFFFFF;
+  --selector-bg:    #CBE9E5;
+  --highlight:      #E5B64A;
 
   --font-display: 'Fraunces', Georgia, serif;
   --font-body:    'Outfit', system-ui, sans-serif;
