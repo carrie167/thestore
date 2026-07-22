@@ -133,8 +133,15 @@ export const THEMES = {
 
 const ThemeContext = createContext(null)
 
-export function ThemeProvider({ children }) {
-  const [themeId, setThemeId] = useState(() => localStorage.getItem('thestore-theme') || 'teal')
+export function ThemeProvider({ children, serverTheme, onSaveTheme }) {
+  const [themeId, setThemeId] = useState(() => serverTheme || localStorage.getItem('thestore-theme') || 'teal')
+
+  // Sync from server when it loads
+  useEffect(() => {
+    if (serverTheme && serverTheme !== themeId) {
+      setThemeId(serverTheme)
+    }
+  }, [serverTheme])
 
   useEffect(() => {
     const theme = THEMES[themeId] || THEMES.teal
@@ -143,8 +150,13 @@ export function ThemeProvider({ children }) {
     localStorage.setItem('thestore-theme', themeId)
   }, [themeId])
 
+  function handleSetTheme(id) {
+    setThemeId(id)
+    if (onSaveTheme) onSaveTheme(id)
+  }
+
   return (
-    <ThemeContext.Provider value={{ themeId, setThemeId, themes: THEMES }}>
+    <ThemeContext.Provider value={{ themeId, setThemeId: handleSetTheme, themes: THEMES }}>
       {children}
     </ThemeContext.Provider>
   )
