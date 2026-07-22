@@ -3,11 +3,15 @@ import PageHeader from '../components/PageHeader'
 import { useAuth } from '../lib/AuthContext'
 import { useTheme } from '../lib/ThemeContext'
 
-export default function SettingsPage({ myProfile, householdMembers, onUpdateDisplayName, onGenerateInvite, onUseInviteCode, onMenuOpen, signOut }) {
+export default function SettingsPage({ myProfile, householdMembers, onUpdateDisplayName, onGenerateInvite, onUseInviteCode, onMenuOpen, signOut, onLeaveHousehold, onRemoveMember }) {
   const { user } = useAuth()
   const { themeId, setThemeId, themes } = useTheme()
   const [displayName, setDisplayName] = useState(myProfile?.display_name || '')
   const [savingName, setSavingName] = useState(false)
+  const [confirmLeave, setConfirmLeave] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState(null) // user_id of member to remove
+  const [leaving, setLeaving] = useState(false)
+  const [removing, setRemoving] = useState(false)
   const [nameSuccess, setNameSuccess] = useState(false)
   const [invite, setInvite] = useState(null)
   const [generatingInvite, setGeneratingInvite] = useState(false)
@@ -96,12 +100,46 @@ export default function SettingsPage({ myProfile, householdMembers, onUpdateDisp
             {householdMembers.map(m => (
               <div key={m.user_id} style={s.memberRow}>
                 <div style={s.memberAvatar}>{(m.display_name || '?')[0].toUpperCase()}</div>
-                <div>
+                <div style={{ flex: 1 }}>
                   <p style={s.memberName}>{m.display_name}{m.user_id === user?.id ? ' (you)' : ''}</p>
                 </div>
+                {m.user_id !== user?.id && (
+                  confirmRemove === m.user_id ? (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--charcoal-soft)' }}>Remove?</p>
+                      <button style={s.confirmSmallBtn} onClick={async () => {
+                        setRemoving(true)
+                        try { await onRemoveMember(m.user_id) } finally { setRemoving(false); setConfirmRemove(null) }
+                      }} disabled={removing}>{removing ? '…' : 'Yes'}</button>
+                      <button style={s.cancelSmallBtn} onClick={() => setConfirmRemove(null)}>No</button>
+                    </div>
+                  ) : (
+                    <button style={s.removeSmallBtn} onClick={() => setConfirmRemove(m.user_id)}>Remove</button>
+                  )
+                )}
               </div>
             ))}
           </div>
+
+          {/* Leave household */}
+          {householdMembers.length > 1 && (
+            confirmLeave ? (
+              <div style={s.leaveBox}>
+                <p style={s.leaveText}>Are you sure? Your shared lists and meals will transfer to other members. Your private ones stay with you.</p>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button style={s.cancelBtn} onClick={() => setConfirmLeave(false)}>Cancel</button>
+                  <button style={{ ...s.saveBtn, background: 'var(--danger)' }} onClick={async () => {
+                    setLeaving(true)
+                    try { await onLeaveHousehold() } finally { setLeaving(false) }
+                  }} disabled={leaving}>{leaving ? 'Leaving…' : 'Leave household'}</button>
+                </div>
+              </div>
+            ) : (
+              <button style={s.leaveBtn} onClick={() => setConfirmLeave(true)}>
+                Leave this household
+              </button>
+            )
+          )}
         </Section>
 
         {/* Invite someone */}
@@ -180,6 +218,12 @@ const s = {
   memberRow: { display: 'flex', alignItems: 'center', gap: 10 },
   memberAvatar: { width: 34, height: 34, borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0 },
   memberName: { margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--charcoal)' },
+  removeSmallBtn: { border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal-soft)', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer', flexShrink: 0 },
+  confirmSmallBtn: { border: 'none', background: 'var(--danger)', color: '#fff', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' },
+  cancelSmallBtn: { border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal-soft)', borderRadius: 6, padding: '4px 10px', fontSize: 12, cursor: 'pointer' },
+  leaveBox: { marginTop: 12, background: 'var(--danger-light)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 },
+  leaveText: { margin: 0, fontSize: 13, color: 'var(--charcoal)', lineHeight: 1.5 },
+  leaveBtn: { marginTop: 8, border: 'none', background: 'none', color: 'var(--danger)', fontSize: 13, textDecoration: 'underline', textAlign: 'left', cursor: 'pointer', padding: 0 },
   inviteBox: { background: 'var(--cream)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, border: '1px solid var(--accent-light)' },
   inviteCode: { margin: 0, fontSize: 32, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent)', letterSpacing: '0.15em' },
   inviteExpiry: { margin: 0, fontSize: 11, color: 'var(--charcoal-soft)' },
