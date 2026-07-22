@@ -186,21 +186,23 @@ export default function ListPage({
                     <div style={s.freetextBar}>
                       <input
                         autoFocus
-                        style={{ ...s.freetextInput, flex: 2 }}
+                        style={s.freetextInput}
                         value={freetextByList[list.id] || ''}
                         onChange={e => setFreetextByList(cur => ({ ...cur, [list.id]: e.target.value }))}
                         placeholder="Item name…"
                         onKeyDown={e => e.key === 'Enter' && handleAddFreetext(list.id)}
                       />
-                      <input
-                        style={{ ...s.freetextInput, flex: 1 }}
-                        type="number" step="0.01" min="0"
-                        value={freetextPriceByList[list.id] || ''}
-                        onChange={e => setFreetextPriceByList(cur => ({ ...cur, [list.id]: e.target.value }))}
-                        placeholder="$0.00"
-                      />
-                      <button style={s.freetextAdd} onClick={() => handleAddFreetext(list.id)}>Add</button>
-                      <button style={s.freetextCancel} onClick={() => setShowFreetextByList(cur => ({ ...cur, [list.id]: false }))}>×</button>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <input
+                          style={{ ...s.freetextInput, flex: 1 }}
+                          type="number" step="0.01" min="0"
+                          value={freetextPriceByList[list.id] || ''}
+                          onChange={e => setFreetextPriceByList(cur => ({ ...cur, [list.id]: e.target.value }))}
+                          placeholder="Est. price (optional)"
+                        />
+                        <button style={s.freetextAdd} onClick={() => handleAddFreetext(list.id)}>Add</button>
+                        <button style={s.freetextCancel} onClick={() => setShowFreetextByList(cur => ({ ...cur, [list.id]: false }))}>×</button>
+                      </div>
                     </div>
                   ) : (
                     <button style={s.quickAddBtn} onClick={() => setShowFreetextByList(cur => ({ ...cur, [list.id]: true }))}>
@@ -368,9 +370,9 @@ const s = {
   qtyBtn: { width: 25, height: 25, borderRadius: 6, border: '1px solid var(--cream-border)', background: 'var(--cream)', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--accent)', cursor: 'pointer' },
   removeBtn: { border: 'none', background: 'none', color: 'var(--cream-border)', fontSize: 19, lineHeight: 1, padding: '0 2px', cursor: 'pointer' },
   emptyItems: { padding: '14px', fontSize: 13, color: 'var(--charcoal-soft)', fontStyle: 'italic', textAlign: 'center', margin: 0 },
-  freetextBar: { display: 'flex', gap: 6, padding: '8px 14px', borderTop: '0.5px solid var(--cream-border)', background: 'var(--cream-light)' },
-  freetextInput: { border: '1px solid var(--cream-border)', borderRadius: 8, padding: '8px 10px', fontSize: 14 },
-  freetextAdd: { border: 'none', background: 'var(--primary)', color: '#fff', borderRadius: 8, padding: '8px 14px', fontWeight: 600, fontSize: 13, cursor: 'pointer' },
+  freetextBar: { display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 14px', borderTop: '0.5px solid var(--cream-border)', background: 'var(--cream-light)' },
+  freetextInput: { border: '1px solid var(--cream-border)', borderRadius: 8, padding: '8px 10px', fontSize: 14, width: '100%', boxSizing: 'border-box' },
+  freetextAdd: { border: 'none', background: 'var(--primary)', color: '#fff', borderRadius: 8, padding: '8px 14px', fontWeight: 600, fontSize: 13, cursor: 'pointer', alignSelf: 'flex-end' },
   freetextCancel: { border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 20, padding: '0 4px', cursor: 'pointer' },
   quickAddBtn: { display: 'block', width: '100%', border: 'none', background: 'none', color: 'var(--accent)', fontSize: 13, padding: '10px 14px', textAlign: 'left', textDecoration: 'underline', cursor: 'pointer', borderTop: '0.5px solid var(--cream-border)' },
   clearRow: { padding: '8px 14px', display: 'flex', justifyContent: 'flex-end', borderTop: '0.5px solid var(--cream-border)' },
