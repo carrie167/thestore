@@ -246,7 +246,7 @@ const s = {
   totalValue: { fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 500, color: 'rgba(255,255,255,0.9)' },
   clearBtn: { border: 'none', background: 'var(--danger-light)', color: 'var(--danger)', borderRadius: 20, padding: '4px 10px', fontSize: 11, fontWeight: 600 },
   listSelectorBar: { background: '#fff', padding: '10px 14px', borderBottom: '0.5px solid var(--cream-border)', display: 'flex', gap: 8, alignItems: 'center' },
-  selectorBtn: { flex: 1, background: 'var(--cream)', border: '1px solid var(--accent-light)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' },
+  selectorBtn: { flex: 1, background: 'var(--selector-bg)', border: '1px solid var(--primary-light)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left' },
   selectorLabel: { margin: 0, fontSize: 10, color: 'var(--primary-dark)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 },
   selectorName: { margin: '2px 0 0', fontSize: 16, fontWeight: 700, color: 'var(--charcoal)', fontFamily: 'var(--font-body)' },
   selectorRight: { display: 'flex', alignItems: 'center', gap: 8 },
