@@ -59,15 +59,21 @@ export function useStoreData() {
       setListItems([])
     }
 
-    // Load household members with display names
+    // Load household members then fetch their profiles separately
     const { data: hmData } = await supabase
       .from('household_members')
-      .select('user_id, profiles(display_name, theme)')
-    if (hmData) {
+      .select('user_id')
+    if (hmData && hmData.length > 0) {
+      const userIds = hmData.map(hm => hm.user_id)
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, display_name, theme')
+        .in('id', userIds)
+      const profileMap = new Map((profilesData || []).map(p => [p.id, p]))
       setHouseholdMembers(hmData.map(hm => ({
         user_id: hm.user_id,
-        display_name: hm.profiles?.display_name || 'Unknown',
-          theme: hm.profiles?.theme || 'teal',
+        display_name: profileMap.get(hm.user_id)?.display_name || 'Unknown',
+        theme: profileMap.get(hm.user_id)?.theme || 'teal',
       })))
     }
 
