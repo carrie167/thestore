@@ -26,15 +26,16 @@ function AppShell() {
     addSection, updateSection, deleteSection,
     addMeal, updateMeal, deleteMeal,
     generateInviteCode, useInviteCode,
-    updateDisplayName,
+    updateDisplayName, updateTheme,
   } = useStoreData()
 
   if (authLoading) return <Splash text="Loading…" />
   if (!user) return <AuthPage />
-  if (loading) return <Splash text="Loading TheStore…" />
-  if (error) return <Splash text={`Something went wrong: ${error.message}`} />
+  if (loading) return <ThemeProvider><Splash text="Loading TheStore…" /></ThemeProvider>
+  if (error) return <ThemeProvider><Splash text={`Something went wrong: ${error.message}`} /></ThemeProvider>
 
   return (
+    <ThemeProvider serverTheme={myProfile?.theme} onSaveTheme={updateTheme}>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <Sidebar
         isOpen={sidebarOpen}
@@ -87,6 +88,7 @@ function AppShell() {
         )}
       </div>
     </div>
+    </ThemeProvider>
   )
 }
 
@@ -100,10 +102,8 @@ function Splash({ text }) {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <AppShell />
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   )
 }
