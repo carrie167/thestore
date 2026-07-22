@@ -15,10 +15,10 @@ export function AuthProvider({ children }) {
   async function signUp(email, password) {
     const result = await supabase.auth.signUp({ email, password })
     if (!result.error && result.data?.user) {
-      // Create profile immediately — don't rely on trigger alone
       const displayName = email.split('@')[0]
-      await supabase.from('profiles').upsert({
-        id: result.data.user.id,
+      // Use RPC so it runs as security definer, bypassing RLS timing issue
+      await supabase.rpc('create_profile_for_user', {
+        user_id: result.data.user.id,
         display_name: displayName,
       })
     }
