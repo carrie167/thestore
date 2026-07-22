@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PageHeader from '../components/PageHeader'
 import { useAuth } from '../lib/AuthContext'
 import { useTheme } from '../lib/ThemeContext'
@@ -8,6 +8,13 @@ export default function SettingsPage({ myProfile, householdMembers, onUpdateDisp
   const { themeId, setThemeId, themes } = useTheme()
   const [displayName, setDisplayName] = useState(myProfile?.display_name || '')
   const [savingName, setSavingName] = useState(false)
+
+  // Sync display name when profile loads
+  useEffect(() => {
+    if (myProfile?.display_name && !displayName) {
+      setDisplayName(myProfile.display_name)
+    }
+  }, [myProfile?.display_name])
   const [confirmLeave, setConfirmLeave] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(null) // user_id of member to remove
   const [leaving, setLeaving] = useState(false)
@@ -208,8 +215,8 @@ const s = {
   input: { flex: 1, border: '1px solid var(--cream-border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, background: 'var(--cream-light)', color: 'var(--charcoal)' },
   saveBtn: { border: 'none', background: 'var(--primary)', color: '#fff', borderRadius: 8, padding: '10px 16px', fontSize: 13, fontWeight: 600, flexShrink: 0 },
   signOutBtn: { border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal-soft)', borderRadius: 8, padding: '9px 14px', fontSize: 13, alignSelf: 'flex-start', textDecoration: 'underline' },
-  themeGrid: { display: 'flex', gap: 10 },
-  themeCard: { flex: 1, borderRadius: 12, padding: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
+  themeGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
+  themeCard: { borderRadius: 12, padding: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 },
   swatchRow: { display: 'flex', gap: 3 },
   swatch: { width: 18, height: 18, borderRadius: 4 },
   themeName: { fontSize: 12, color: 'var(--charcoal-soft)', fontWeight: 500 },
