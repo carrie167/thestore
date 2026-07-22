@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react'
+import PageHeader from '../components/PageHeader'
+import MemberPicker from '../components/MemberPicker'
 
 export default function MealsPage({
-  meals, mealIngredients, inventory, sections, activeList,
-  onAddMealToList, onAddMeal, onUpdateMeal, onDeleteMeal, onAddInventoryItem,
+  meals, mealIngredients, mealMembers, inventory, sections, activeList,
+  otherMembers, onAddMealToList, onAddMeal, onUpdateMeal, onDeleteMeal,
+  onAddInventoryItem, onMenuOpen,
 }) {
   const [expandedId, setExpandedId] = useState(null)
   const [editingId, setEditingId] = useState(null)
@@ -20,6 +23,15 @@ export default function MealsPage({
     return map
   }, [mealIngredients])
 
+  const membersByMeal = useMemo(() => {
+    const map = new Map()
+    mealMembers.forEach(m => {
+      if (!map.has(m.meal_id)) map.set(m.meal_id, [])
+      map.get(m.meal_id).push(m.user_id)
+    })
+    return map
+  }, [mealMembers])
+
   function mealCost(mealId) {
     return (ingredientsByMeal.get(mealId) || []).reduce((sum, ing) => {
       const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
@@ -34,10 +46,11 @@ export default function MealsPage({
 
   return (
     <div style={s.page}>
-      <div style={s.header}>
-        <h1 style={s.title}>Meals</h1>
-        <button style={s.newMealBtn} onClick={() => setShowNew(true)}>+ Meal</button>
-      </div>
+      <PageHeader
+        title="Meals"
+        onMenuOpen={onMenuOpen}
+        right={<button style={s.newMealBtn} onClick={() => setShowNew(true)}>+ Meal</button>}
+      />
 
       <div style={s.addingTo}>
         Adding to <strong style={{ color: 'var(--charcoal)' }}>{activeList?.name || '—'}</strong>
@@ -47,7 +60,7 @@ export default function MealsPage({
         {meals.length === 0 && (
           <div style={s.empty}>
             <p style={s.emptyTitle}>No meals yet</p>
-            <p style={s.emptyBody}>Tap "+ Meal" to add a recipe. When you're ready to cook, tap "Add to list" and all ingredients go straight to your active list.</p>
+            <p style={s.emptyBody}>Tap "+ Meal" to add a recipe. Tap "Add to list" and all ingredients go straight to your active list.</p>
           </div>
         )}
 
@@ -56,17 +69,23 @@ export default function MealsPage({
           const cost = mealCost(meal.id)
           const isExpanded = expandedId === meal.id
           const isAdding = addingId === meal.id
+          const sharedWith = membersByMeal.get(meal.id) || []
 
           if (editingId === meal.id) {
             return (
-              <div key={meal.id} style={{ ...s.card, padding: 0 }}>
+              <div key={meal.id} style={s.card}>
                 <MealForm
                   meal={meal}
                   existingIngredients={ings}
+                  existingMembers={sharedWith}
                   inventory={inventory}
                   sections={sections}
+                  otherMembers={otherMembers}
                   onAddInventoryItem={onAddInventoryItem}
-                  onSave={async (name, notes, ingredients) => { await onUpdateMeal(meal.id, name, notes, ingredients); setEditingId(null) }}
+                  onSave={async (name, notes, ingredients, members) => {
+                    await onUpdateMeal(meal.id, name, notes, ingredients, members)
+                    setEditingId(null)
+                  }}
                   onCancel={() => setEditingId(null)}
                   onDelete={async () => { await onDeleteMeal(meal.id); setEditingId(null) }}
                 />
@@ -76,14 +95,12 @@ export default function MealsPage({
 
           return (
             <div key={meal.id} style={s.card}>
-              {/* Header row — tap to expand/collapse */}
               <button style={s.cardHeader} onClick={() => setExpandedId(isExpanded ? null : meal.id)}>
                 <div style={{ flex: 1 }}>
                   <p style={s.mealName}>{meal.name}</p>
                   {!isExpanded && (
-                    <p style={s.mealMeta}>{ings.length} ingredient{ings.length !== 1 ? 's' : ''}{cost > 0 ? ` · $${cost.toFixed(2)}` : ''}</p>
+                    <p style={s.mealMeta}>{ings.length} ingredient{ings.length !== 1 ? 's' : ''}{cost > 0 ? ` · $${cost.toFixed(2)}` : ''}{sharedWith.length > 0 ? ' · Shared' : ''}</p>
                   )}
-                  {isExpanded && meal.notes && <p style={s.mealMeta}>{meal.notes}</p>}
                 </div>
                 <div style={s.cardHeaderRight}>
                   {isExpanded && cost > 0 && <span style={s.mealCost}>${cost.toFixed(2)}</span>}
@@ -91,34 +108,25 @@ export default function MealsPage({
                 </div>
               </button>
 
-              {/* Ingredient rows — warm tan background */}
               {isExpanded && (
                 <>
+                  {meal.notes && <div style={s.notesBox}><p style={s.notesText}>{meal.notes}</p></div>}
                   <div style={s.ingSection}>
                     {ings.map(ing => {
                       const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
-                      const name = item?.name || ing.name
                       const price = item?.est_price ? Number(item.est_price) * ing.quantity : null
                       return (
                         <div key={ing.id} style={s.ingRow}>
-                          <span style={s.ingName}>
-                            {ing.quantity > 1 && <span style={s.ingQty}>{ing.quantity}× </span>}
-                            {name}
-                          </span>
+                          <span style={s.ingName}>{ing.quantity > 1 && <span style={s.ingQty}>{ing.quantity}× </span>}{item?.name || ing.name}</span>
                           {price != null && <span style={s.ingPrice}>${price.toFixed(2)}</span>}
                         </div>
                       )
                     })}
-                    {ings.length === 0 && <p style={{ fontSize: 13, color: 'var(--charcoal-soft)', margin: '8px 0', fontStyle: 'italic' }}>No ingredients added yet</p>}
+                    {ings.length === 0 && <p style={{ fontSize: 13, color: 'var(--charcoal-soft)', margin: '8px 0', fontStyle: 'italic' }}>No ingredients yet</p>}
                   </div>
-
                   <div style={s.cardActions}>
                     <button style={s.editBtn} onClick={() => setEditingId(meal.id)}>Edit</button>
-                    <button
-                      style={{ ...s.addToListBtn, opacity: isAdding ? 0.6 : 1 }}
-                      onClick={() => handleAdd(meal)}
-                      disabled={isAdding}
-                    >
+                    <button style={{ ...s.addToListBtn, opacity: isAdding ? 0.6 : 1 }} onClick={() => handleAdd(meal)} disabled={isAdding}>
                       {isAdding ? 'Adding…' : `Add to ${activeList?.name || 'list'} →`}
                     </button>
                   </div>
@@ -132,10 +140,9 @@ export default function MealsPage({
       {showNew && (
         <Sheet onClose={() => setShowNew(false)}>
           <MealForm
-            inventory={inventory}
-            sections={sections}
+            inventory={inventory} sections={sections} otherMembers={otherMembers}
             onAddInventoryItem={onAddInventoryItem}
-            onSave={async (name, notes, ingredients) => { await onAddMeal(name, notes, ingredients); setShowNew(false) }}
+            onSave={async (name, notes, ingredients, members) => { await onAddMeal(name, notes, ingredients, members); setShowNew(false) }}
             onCancel={() => setShowNew(false)}
           />
         </Sheet>
@@ -144,12 +151,11 @@ export default function MealsPage({
   )
 }
 
-function MealForm({ meal, existingIngredients = [], inventory, sections, onAddInventoryItem, onSave, onCancel, onDelete }) {
+function MealForm({ meal, existingIngredients = [], existingMembers = [], inventory, sections, otherMembers = [], onAddInventoryItem, onSave, onCancel, onDelete }) {
   const [name, setName] = useState(meal?.name || '')
   const [notes, setNotes] = useState(meal?.notes || '')
-  const [ingredients, setIngredients] = useState(() =>
-    existingIngredients.map(ing => ({ inventory_item_id: ing.inventory_item_id, name: ing.name, quantity: ing.quantity }))
-  )
+  const [ingredients, setIngredients] = useState(() => existingIngredients.map(ing => ({ inventory_item_id: ing.inventory_item_id, name: ing.name, quantity: ing.quantity })))
+  const [selectedMembers, setSelectedMembers] = useState(existingMembers)
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -159,22 +165,13 @@ function MealForm({ meal, existingIngredients = [], inventory, sections, onAddIn
   const [addingItem, setAddingItem] = useState(false)
 
   const inventoryById = useMemo(() => new Map(inventory.map(i => [i.id, i])), [inventory])
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return []
-    return inventory.filter(i => i.name.toLowerCase().includes(q)).slice(0, 8)
-  }, [search, inventory])
-
+  const filtered = useMemo(() => { const q = search.trim().toLowerCase(); if (!q) return []; return inventory.filter(i => i.name.toLowerCase().includes(q)).slice(0, 8) }, [search, inventory])
   const noResults = search.trim().length > 1 && filtered.length === 0
 
   function addIngredient(item) {
     const exists = ingredients.find(i => i.inventory_item_id === item.id)
-    if (exists) {
-      setIngredients(cur => cur.map(i => i.inventory_item_id === item.id ? { ...i, quantity: i.quantity + 1 } : i))
-    } else {
-      setIngredients(cur => [...cur, { inventory_item_id: item.id, name: item.name, quantity: 1 }])
-    }
+    if (exists) setIngredients(cur => cur.map(i => i.inventory_item_id === item.id ? { ...i, quantity: i.quantity + 1 } : i))
+    else setIngredients(cur => [...cur, { inventory_item_id: item.id, name: item.name, quantity: 1 }])
     setSearch('')
   }
 
@@ -196,7 +193,7 @@ function MealForm({ meal, existingIngredients = [], inventory, sections, onAddIn
   async function handleSave() {
     if (!name.trim()) return
     setSaving(true)
-    await onSave(name.trim(), notes.trim(), ingredients)
+    await onSave(name.trim(), notes.trim(), ingredients, selectedMembers)
     setSaving(false)
   }
 
@@ -204,8 +201,14 @@ function MealForm({ meal, existingIngredients = [], inventory, sections, onAddIn
     <div style={s.formWrap}>
       <p style={s.formTitle}>{meal ? 'Edit meal' : 'New meal'}</p>
       <label style={s.fieldLabel}>Meal name<input autoFocus style={s.input} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Chicken Stir Fry" /></label>
-      <label style={s.fieldLabel}>Notes (optional)<input style={s.input} value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. serves 4, weeknight favorite" /></label>
 
+      {/* Large notes textarea */}
+      <label style={s.fieldLabel}>
+        Recipe notes
+        <textarea style={s.textarea} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ingredients, steps, tips, reminders… put anything here" rows={5} />
+      </label>
+
+      {/* Ingredient search */}
       <div>
         <label style={s.fieldLabel}>
           Add ingredients
@@ -219,9 +222,7 @@ function MealForm({ meal, existingIngredients = [], inventory, sections, onAddIn
         {noResults && !showAddInventory && (
           <div style={s.dropdown}>
             <div style={s.noResults}>No match for "{search.trim()}"</div>
-            <button style={s.dropdownAddBtn} onClick={() => { setNewItemName(search.trim()); setShowAddInventory(true); setSearch('') }}>
-              + Add "{search.trim()}" to inventory
-            </button>
+            <button style={s.dropdownAddBtn} onClick={() => { setNewItemName(search.trim()); setShowAddInventory(true); setSearch('') }}>+ Add "{search.trim()}" to inventory</button>
           </div>
         )}
       </div>
@@ -261,6 +262,11 @@ function MealForm({ meal, existingIngredients = [], inventory, sections, onAddIn
         </div>
       )}
 
+      {/* Share with members */}
+      {otherMembers.length > 0 && (
+        <MemberPicker members={otherMembers} selected={selectedMembers} onChange={setSelectedMembers} label="Share meal with" />
+      )}
+
       {confirmDelete ? (
         <div style={s.deleteBox}>
           <p style={{ fontSize: 14, margin: '0 0 12px', color: 'var(--charcoal)' }}>Delete "{meal?.name}"?</p>
@@ -295,10 +301,8 @@ function Sheet({ children, onClose }) {
 
 const s = {
   page: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, background: 'var(--cream)' },
-  header: { background: '#fff', padding: '14px 14px 10px', borderBottom: '0.5px solid var(--cream-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 26, margin: 0, color: 'var(--charcoal)', letterSpacing: '-0.02em' },
   newMealBtn: { border: 'none', background: 'var(--sage)', color: '#fff', borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 700 },
-  addingTo: { background: 'var(--steel-light)', padding: '7px 14px', borderBottom: '0.5px solid var(--teal-light)', fontSize: 12, color: 'var(--steel)' },
+  addingTo: { background: 'var(--accent-light)', padding: '7px 14px', borderBottom: '0.5px solid var(--primary-light)', fontSize: 12, color: 'var(--accent)' },
   scroll: { flex: 1, overflowY: 'auto', padding: '12px 14px 16px' },
   empty: { padding: '40px 0', textAlign: 'center' },
   emptyTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, margin: '0 0 8px', color: 'var(--charcoal)' },
@@ -309,37 +313,40 @@ const s = {
   mealMeta: { margin: '3px 0 0', fontSize: 11, color: 'var(--charcoal-soft)' },
   cardHeaderRight: { display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 10 },
   mealCost: { fontSize: 14, fontWeight: 600, color: 'var(--tan)', fontFamily: 'var(--font-mono)' },
-  chevron: { fontSize: 16, color: 'var(--teal-light)' },
+  chevron: { fontSize: 16, color: 'var(--primary-light)' },
+  notesBox: { background: 'var(--cream-light)', padding: '10px 14px', borderTop: '0.5px solid var(--cream-border)' },
+  notesText: { margin: 0, fontSize: 13, color: 'var(--charcoal-soft)', lineHeight: 1.6, whiteSpace: 'pre-wrap' },
   ingSection: { background: 'var(--tan-light)', borderTop: '0.5px solid var(--tan-border)', padding: '0 14px' },
   ingRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '0.5px solid var(--tan-border)' },
-  ingName: { fontSize: 13, color: 'var(--charcoal)', fontFamily: 'var(--font-body)' },
+  ingName: { fontSize: 13, color: 'var(--charcoal)' },
   ingQty: { fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--charcoal-soft)' },
   ingPrice: { fontSize: 12, color: 'var(--tan)', fontFamily: 'var(--font-mono)' },
   cardActions: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderTop: '0.5px solid var(--cream-border)' },
   editBtn: { border: '1px solid var(--cream-border)', background: '#fff', color: 'var(--charcoal-soft)', padding: '6px 12px', borderRadius: 8, fontSize: 12 },
-  addToListBtn: { border: 'none', background: 'var(--teal)', color: '#fff', padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600 },
+  addToListBtn: { border: 'none', background: 'var(--primary)', color: '#fff', padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600 },
   sheetOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 20 },
-  sheet: { background: '#fff', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 500, maxHeight: '90vh', overflowY: 'auto', padding: '0 0 32px' },
+  sheet: { background: '#fff', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 500, maxHeight: '92vh', overflowY: 'auto', padding: '0 0 32px' },
   sheetHandle: { width: 36, height: 4, background: 'var(--cream-border)', borderRadius: 2, margin: '12px auto 16px' },
   formWrap: { padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 14 },
   formTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, margin: 0, color: 'var(--charcoal)' },
   fieldLabel: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
   input: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 15, background: '#fff', color: 'var(--charcoal)', boxSizing: 'border-box' },
+  textarea: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 14, background: '#fff', color: 'var(--charcoal)', resize: 'vertical', lineHeight: 1.6, fontFamily: 'var(--font-body)' },
   dropdown: { background: '#fff', border: '1px solid var(--cream-border)', borderRadius: 8, marginTop: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', overflow: 'hidden' },
   dropdownItem: { width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: 14, borderBottom: '0.5px solid var(--cream-border)', color: 'var(--charcoal)' },
   noResults: { padding: '10px 12px', fontSize: 13, color: 'var(--charcoal-soft)', borderBottom: '0.5px solid var(--cream-border)' },
-  dropdownAddBtn: { width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: 14, color: 'var(--steel)', fontWeight: 600 },
-  addItemBox: { background: 'var(--cream)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 12, border: '1px solid var(--steel-light)' },
-  addItemTitle: { margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--steel)', fontFamily: 'var(--font-display)' },
+  dropdownAddBtn: { width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: 14, color: 'var(--accent)', fontWeight: 600 },
+  addItemBox: { background: 'var(--cream)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 12, border: '1px solid var(--accent-light)' },
+  addItemTitle: { margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--accent)', fontFamily: 'var(--font-display)' },
   ingEditList: { display: 'flex', flexDirection: 'column', gap: 6 },
   ingEditRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--cream)', borderRadius: 8, padding: '8px 12px' },
   ingEditName: { fontSize: 14, color: 'var(--charcoal)', flex: 1 },
   qtyRow: { display: 'flex', alignItems: 'center', gap: 6 },
-  qtyBtn: { width: 26, height: 26, borderRadius: 6, border: '1px solid var(--cream-border)', background: '#fff', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--steel)' },
+  qtyBtn: { width: 26, height: 26, borderRadius: 6, border: '1px solid var(--cream-border)', background: '#fff', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--accent)' },
   qtyNum: { fontSize: 14, fontFamily: 'var(--font-mono)', minWidth: 16, textAlign: 'center', color: 'var(--charcoal)' },
   deleteBox: { background: 'var(--cream)', borderRadius: 10, padding: 14 },
   formActions: { display: 'flex', gap: 10 },
   cancelBtn: { flex: 1, padding: 11, borderRadius: 8, border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal)', fontWeight: 600 },
-  confirmBtn: { flex: 1, padding: 11, borderRadius: 8, border: 'none', background: 'var(--teal)', color: '#fff', fontWeight: 600 },
+  confirmBtn: { flex: 1, padding: 11, borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 600 },
   deleteLink: { border: 'none', background: 'none', color: 'var(--danger)', fontSize: 13, textAlign: 'center', textDecoration: 'underline', marginTop: 4 },
 }
