@@ -16,7 +16,7 @@ function AppShell() {
 
   const {
     sections, inventory, lists, listMembers, activeListId, activeList, setActiveListId,
-    listItems, meals, mealMembers, mealIngredients,
+    listItems, allListItems, meals, mealMembers, mealIngredients,
     householdMembers, myProfile, otherMembers,
     loading, error,
     createList, updateList, deleteList,
@@ -48,7 +48,7 @@ function AppShell() {
       <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {tab === 'list' && (
           <ListPage
-            sections={sections} listItems={listItems} lists={lists} listMembers={listMembers}
+            sections={sections} listItems={allListItems} lists={lists} listMembers={listMembers}
             activeListId={activeListId} activeList={activeList} onSwitchList={setActiveListId}
             onToggle={toggleChecked} onRemove={removeFromList} onClear={clearList}
             onUpdateQuantity={updateQuantity} onCreateList={createList}
