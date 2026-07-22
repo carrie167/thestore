@@ -8,9 +8,13 @@ export default function MealsPage({
   onAddInventoryItem, onMenuOpen,
 }) {
   const [expandedId, setExpandedId] = useState(null)
+  const [notesExpandedId, setNotesExpandedId] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [showNew, setShowNew] = useState(false)
   const [addingId, setAddingId] = useState(null)
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('all') // all | weeknight | sunday
+  const [sortBy, setSortBy] = useState('name') // name | price
 
   const inventoryById = useMemo(() => new Map(inventory.map(i => [i.id, i])), [inventory])
 
@@ -39,6 +43,26 @@ export default function MealsPage({
     }, 0)
   }
 
+  const filteredMeals = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    let result = meals.filter(meal => {
+      // Type filter
+      if (typeFilter !== 'all' && meal.meal_type !== typeFilter) return false
+      // Search: meal name OR ingredient names
+      if (!q) return true
+      if (meal.name.toLowerCase().includes(q)) return true
+      const ings = ingredientsByMeal.get(meal.id) || []
+      return ings.some(ing => {
+        const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
+        return (item?.name || ing.name || '').toLowerCase().includes(q)
+      })
+    })
+    // Sort
+    if (sortBy === 'name') result = [...result].sort((a, b) => a.name.localeCompare(b.name))
+    if (sortBy === 'price') result = [...result].sort((a, b) => mealCost(b.id) - mealCost(a.id))
+    return result
+  }, [meals, search, typeFilter, sortBy, ingredientsByMeal, inventoryById])
+
   async function handleAdd(meal) {
     setAddingId(meal.id)
     try { await onAddMealToList(meal) } finally { setAddingId(null) }
@@ -52,22 +76,53 @@ export default function MealsPage({
         right={<button style={s.newMealBtn} onClick={() => setShowNew(true)}>+ Meal</button>}
       />
 
-      <div style={s.addingTo}>
-        Adding to <strong style={{ color: 'var(--charcoal)' }}>{activeList?.name || '—'}</strong>
+      {/* Search + filter bar */}
+      <div style={s.filterBar}>
+        <input
+          style={s.searchInput}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search meals or ingredients…"
+        />
+        <div style={s.filterRow}>
+          <div style={s.typePills}>
+            {['all', 'weeknight', 'sunday'].map(t => (
+              <button
+                key={t}
+                style={{ ...s.typePill, background: typeFilter === t ? 'var(--primary)' : 'var(--cream)', color: typeFilter === t ? '#fff' : 'var(--charcoal-soft)', border: typeFilter === t ? 'none' : '1px solid var(--cream-border)' }}
+                onClick={() => setTypeFilter(t)}
+              >
+                {t === 'all' ? 'All' : t === 'weeknight' ? '🌙 Weeknight' : '☀️ Sunday'}
+              </button>
+            ))}
+          </div>
+          <select style={s.sortSelect} value={sortBy} onChange={e => setSortBy(e.target.value)}>
+            <option value="name">A–Z</option>
+            <option value="price">Price ↓</option>
+          </select>
+        </div>
       </div>
 
       <div style={s.scroll}>
         {meals.length === 0 && (
           <div style={s.empty}>
             <p style={s.emptyTitle}>No meals yet</p>
-            <p style={s.emptyBody}>Tap "+ Meal" to add a recipe. Tap "Add to list" and all ingredients go straight to your active list.</p>
+            <p style={s.emptyBody}>Tap "+ Meal" to add a recipe. Tap "Add to list" and all ingredients go straight to your active cart.</p>
           </div>
         )}
 
-        {meals.map(meal => {
+        {filteredMeals.length === 0 && meals.length > 0 && (
+          <div style={s.empty}>
+            <p style={s.emptyTitle}>No matches</p>
+            <p style={s.emptyBody}>Try a different search or filter.</p>
+          </div>
+        )}
+
+        {filteredMeals.map(meal => {
           const ings = ingredientsByMeal.get(meal.id) || []
           const cost = mealCost(meal.id)
           const isExpanded = expandedId === meal.id
+          const notesExpanded = notesExpandedId === meal.id
           const isAdding = addingId === meal.id
           const sharedWith = membersByMeal.get(meal.id) || []
 
@@ -82,8 +137,8 @@ export default function MealsPage({
                   sections={sections}
                   otherMembers={otherMembers}
                   onAddInventoryItem={onAddInventoryItem}
-                  onSave={async (name, notes, ingredients, members) => {
-                    await onUpdateMeal(meal.id, name, notes, ingredients, members)
+                  onSave={async (name, notes, mealType, ingredients, members) => {
+                    await onUpdateMeal(meal.id, name, notes, mealType, ingredients, members)
                     setEditingId(null)
                   }}
                   onCancel={() => setEditingId(null)}
@@ -95,11 +150,23 @@ export default function MealsPage({
 
           return (
             <div key={meal.id} style={s.card}>
+              {/* Collapsed header */}
               <button style={s.cardHeader} onClick={() => setExpandedId(isExpanded ? null : meal.id)}>
                 <div style={{ flex: 1 }}>
-                  <p style={s.mealName}>{meal.name}</p>
+                  <div style={s.cardTitleRow}>
+                    <p style={s.mealName}>{meal.name}</p>
+                    {meal.meal_type && (
+                      <span style={{ ...s.typeBadge, background: meal.meal_type === 'weeknight' ? 'var(--accent-light)' : 'var(--tan-light)', color: meal.meal_type === 'weeknight' ? 'var(--accent)' : 'var(--tan)' }}>
+                        {meal.meal_type === 'weeknight' ? '🌙 Weeknight' : '☀️ Sunday'}
+                      </span>
+                    )}
+                  </div>
                   {!isExpanded && (
-                    <p style={s.mealMeta}>{ings.length} ingredient{ings.length !== 1 ? 's' : ''}{cost > 0 ? ` · $${cost.toFixed(2)}` : ''}{sharedWith.length > 0 ? ' · Shared' : ''}</p>
+                    <p style={s.mealMeta}>
+                      {ings.length} ingredient{ings.length !== 1 ? 's' : ''}
+                      {cost > 0 ? ` · $${cost.toFixed(2)}` : ''}
+                      {sharedWith.length > 0 ? ' · Shared' : ''}
+                    </p>
                   )}
                 </div>
                 <div style={s.cardHeaderRight}>
@@ -110,24 +177,46 @@ export default function MealsPage({
 
               {isExpanded && (
                 <>
-                  {meal.notes && <div style={s.notesBox}><p style={s.notesText}>{meal.notes}</p></div>}
+                  {/* Ingredient list — always shown first */}
                   <div style={s.ingSection}>
                     {ings.map(ing => {
                       const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
                       const price = item?.est_price ? Number(item.est_price) * ing.quantity : null
                       return (
                         <div key={ing.id} style={s.ingRow}>
-                          <span style={s.ingName}>{ing.quantity > 1 && <span style={s.ingQty}>{ing.quantity}× </span>}{item?.name || ing.name}</span>
+                          <span style={s.ingName}>
+                            {ing.quantity > 1 && <span style={s.ingQty}>{ing.quantity}× </span>}
+                            {item?.name || ing.name}
+                          </span>
                           {price != null && <span style={s.ingPrice}>${price.toFixed(2)}</span>}
                         </div>
                       )
                     })}
                     {ings.length === 0 && <p style={{ fontSize: 13, color: 'var(--charcoal-soft)', margin: '8px 0', fontStyle: 'italic' }}>No ingredients yet</p>}
                   </div>
+
+                  {/* Recipe notes — collapsible, below ingredients */}
+                  {meal.notes && (
+                    <div style={s.notesSection}>
+                      <button style={s.notesToggle} onClick={() => setNotesExpandedId(notesExpanded ? null : meal.id)}>
+                        <span style={s.notesLabel}>📋 Recipe notes</span>
+                        <span style={{ fontSize: 14, color: 'var(--charcoal-soft)' }}>{notesExpanded ? '∧' : '∨'}</span>
+                      </button>
+                      {notesExpanded && (
+                        <p style={s.notesText}>{meal.notes}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Card actions */}
                   <div style={s.cardActions}>
                     <button style={s.editBtn} onClick={() => setEditingId(meal.id)}>Edit</button>
-                    <button style={{ ...s.addToListBtn, opacity: isAdding ? 0.6 : 1 }} onClick={() => handleAdd(meal)} disabled={isAdding}>
-                      {isAdding ? 'Adding…' : `Add to ${activeList?.name || 'list'} →`}
+                    <button
+                      style={{ ...s.addToListBtn, opacity: isAdding ? 0.6 : 1 }}
+                      onClick={() => handleAdd(meal)}
+                      disabled={isAdding}
+                    >
+                      {isAdding ? 'Adding…' : `Add to ${activeList?.name || 'cart'} →`}
                     </button>
                   </div>
                 </>
@@ -142,7 +231,10 @@ export default function MealsPage({
           <MealForm
             inventory={inventory} sections={sections} otherMembers={otherMembers}
             onAddInventoryItem={onAddInventoryItem}
-            onSave={async (name, notes, ingredients, members) => { await onAddMeal(name, notes, ingredients, members); setShowNew(false) }}
+            onSave={async (name, notes, mealType, ingredients, members) => {
+              await onAddMeal(name, notes, ingredients, members, mealType)
+              setShowNew(false)
+            }}
             onCancel={() => setShowNew(false)}
           />
         </Sheet>
@@ -154,9 +246,10 @@ export default function MealsPage({
 function MealForm({ meal, existingIngredients = [], existingMembers = [], inventory, sections, otherMembers = [], onAddInventoryItem, onSave, onCancel, onDelete }) {
   const [name, setName] = useState(meal?.name || '')
   const [notes, setNotes] = useState(meal?.notes || '')
+  const [mealType, setMealType] = useState(meal?.meal_type || '')
   const [ingredients, setIngredients] = useState(() => existingIngredients.map(ing => ({ inventory_item_id: ing.inventory_item_id, name: ing.name, quantity: ing.quantity })))
   const [selectedMembers, setSelectedMembers] = useState(existingMembers)
-  const [search, setSearch] = useState('')
+  const [ingSearch, setIngSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showAddInventory, setShowAddInventory] = useState(false)
@@ -165,14 +258,18 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
   const [addingItem, setAddingItem] = useState(false)
 
   const inventoryById = useMemo(() => new Map(inventory.map(i => [i.id, i])), [inventory])
-  const filtered = useMemo(() => { const q = search.trim().toLowerCase(); if (!q) return []; return inventory.filter(i => i.name.toLowerCase().includes(q)).slice(0, 8) }, [search, inventory])
-  const noResults = search.trim().length > 1 && filtered.length === 0
+  const filtered = useMemo(() => {
+    const q = ingSearch.trim().toLowerCase()
+    if (!q) return []
+    return inventory.filter(i => i.name.toLowerCase().includes(q)).slice(0, 8)
+  }, [ingSearch, inventory])
+  const noResults = ingSearch.trim().length > 1 && filtered.length === 0
 
   function addIngredient(item) {
     const exists = ingredients.find(i => i.inventory_item_id === item.id)
     if (exists) setIngredients(cur => cur.map(i => i.inventory_item_id === item.id ? { ...i, quantity: i.quantity + 1 } : i))
     else setIngredients(cur => [...cur, { inventory_item_id: item.id, name: item.name, quantity: 1 }])
-    setSearch('')
+    setIngSearch('')
   }
 
   function updateIngQty(idx, qty) {
@@ -193,26 +290,38 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
   async function handleSave() {
     if (!name.trim()) return
     setSaving(true)
-    await onSave(name.trim(), notes.trim(), ingredients, selectedMembers)
+    await onSave(name.trim(), notes.trim(), mealType || null, ingredients, selectedMembers)
     setSaving(false)
   }
 
   return (
     <div style={s.formWrap}>
       <p style={s.formTitle}>{meal ? 'Edit meal' : 'New meal'}</p>
-      <label style={s.fieldLabel}>Meal name<input autoFocus style={s.input} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Chicken Stir Fry" /></label>
 
-      {/* Large notes textarea */}
-      <label style={s.fieldLabel}>
-        Recipe notes
-        <textarea style={s.textarea} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Ingredients, steps, tips, reminders… put anything here" rows={5} />
+      <label style={s.fieldLabel}>Meal name
+        <input autoFocus style={s.input} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Chicken Stir Fry" />
       </label>
+
+      {/* Meal type toggle */}
+      <div>
+        <p style={{ ...s.fieldLabel, marginBottom: 8 }}>Type</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[['', 'None'], ['weeknight', '🌙 Weeknight'], ['sunday', '☀️ Sunday']].map(([val, label]) => (
+            <button
+              key={val}
+              style={{ ...s.typePill, background: mealType === val ? 'var(--primary)' : 'var(--cream)', color: mealType === val ? '#fff' : 'var(--charcoal-soft)', border: mealType === val ? 'none' : '1px solid var(--cream-border)', padding: '7px 14px' }}
+              onClick={() => setMealType(val)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Ingredient search */}
       <div>
-        <label style={s.fieldLabel}>
-          Add ingredients
-          <input style={s.input} value={search} onChange={e => { setSearch(e.target.value); setShowAddInventory(false) }} placeholder="Search inventory…" />
+        <label style={s.fieldLabel}>Add ingredients
+          <input style={s.input} value={ingSearch} onChange={e => { setIngSearch(e.target.value); setShowAddInventory(false) }} placeholder="Search inventory…" />
         </label>
         {filtered.length > 0 && (
           <div style={s.dropdown}>
@@ -221,8 +330,8 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
         )}
         {noResults && !showAddInventory && (
           <div style={s.dropdown}>
-            <div style={s.noResults}>No match for "{search.trim()}"</div>
-            <button style={s.dropdownAddBtn} onClick={() => { setNewItemName(search.trim()); setShowAddInventory(true); setSearch('') }}>+ Add "{search.trim()}" to inventory</button>
+            <div style={s.noResults}>No match for "{ingSearch.trim()}"</div>
+            <button style={s.dropdownAddBtn} onClick={() => { setNewItemName(ingSearch.trim()); setShowAddInventory(true); setIngSearch('') }}>+ Add "{ingSearch.trim()}" to inventory</button>
           </div>
         )}
       </div>
@@ -261,6 +370,12 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
           })}
         </div>
       )}
+
+      {/* Recipe notes */}
+      <label style={s.fieldLabel}>
+        Recipe notes
+        <textarea style={s.textarea} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Steps, tips, reminders… anything goes" rows={5} />
+      </label>
 
       {/* Share with members */}
       {otherMembers.length > 0 && (
@@ -301,52 +416,61 @@ function Sheet({ children, onClose }) {
 
 const s = {
   page: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, background: 'var(--cream)' },
-  newMealBtn: { border: 'none', background: 'var(--sage)', color: '#fff', borderRadius: 20, padding: '7px 14px', fontSize: 13, fontWeight: 700 },
-  addingTo: { background: 'var(--accent-light)', padding: '7px 14px', borderBottom: '0.5px solid var(--primary-light)', fontSize: 12, color: 'var(--accent)' },
-  scroll: { flex: 1, overflowY: 'auto', padding: '12px 14px 16px' },
+  newMealBtn: { border: 'none', background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: 20, padding: '6px 14px', fontSize: 13, fontWeight: 600 },
+  filterBar: { background: '#fff', padding: '10px 14px', borderBottom: '0.5px solid var(--cream-border)', display: 'flex', flexDirection: 'column', gap: 8 },
+  searchInput: { width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--cream-border)', fontSize: 14, background: 'var(--cream)', boxSizing: 'border-box' },
+  filterRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  typePills: { display: 'flex', gap: 6 },
+  typePill: { borderRadius: 20, padding: '5px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
+  sortSelect: { border: '1px solid var(--cream-border)', borderRadius: 8, padding: '6px 8px', fontSize: 12, background: '#fff', color: 'var(--charcoal)', flexShrink: 0 },
+  scroll: { flex: 1, overflowY: 'auto', padding: '12px 14px 24px', display: 'flex', flexDirection: 'column', gap: 10 },
   empty: { padding: '40px 0', textAlign: 'center' },
   emptyTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, margin: '0 0 8px', color: 'var(--charcoal)' },
   emptyBody: { fontSize: 14, color: 'var(--charcoal-soft)', margin: 0, lineHeight: 1.6 },
-  card: { background: '#fff', borderRadius: 12, border: '1px solid var(--cream-border)', marginBottom: 10, overflow: 'hidden' },
+  card: { background: '#fff', borderRadius: 12, border: '1px solid var(--cream-border)', overflow: 'hidden' },
   cardHeader: { width: '100%', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '13px 14px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' },
+  cardTitleRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   mealName: { margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--charcoal)', fontFamily: 'var(--font-display)' },
+  typeBadge: { fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap' },
   mealMeta: { margin: '3px 0 0', fontSize: 11, color: 'var(--charcoal-soft)' },
   cardHeaderRight: { display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, marginLeft: 10 },
   mealCost: { fontSize: 14, fontWeight: 600, color: 'var(--tan)', fontFamily: 'var(--font-mono)' },
   chevron: { fontSize: 16, color: 'var(--primary-light)' },
-  notesBox: { background: 'var(--cream-light)', padding: '10px 14px', borderTop: '0.5px solid var(--cream-border)' },
-  notesText: { margin: 0, fontSize: 13, color: 'var(--charcoal-soft)', lineHeight: 1.6, whiteSpace: 'pre-wrap' },
   ingSection: { background: 'var(--tan-light)', borderTop: '0.5px solid var(--tan-border)', padding: '0 14px' },
   ingRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '0.5px solid var(--tan-border)' },
   ingName: { fontSize: 13, color: 'var(--charcoal)' },
   ingQty: { fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--charcoal-soft)' },
   ingPrice: { fontSize: 12, color: 'var(--tan)', fontFamily: 'var(--font-mono)' },
+  notesSection: { borderTop: '0.5px solid var(--cream-border)', background: '#fff' },
+  notesToggle: { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' },
+  notesLabel: { fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
+  notesText: { margin: 0, fontSize: 13, color: 'var(--charcoal-soft)', lineHeight: 1.6, whiteSpace: 'pre-wrap', padding: '0 14px 12px' },
   cardActions: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderTop: '0.5px solid var(--cream-border)' },
-  editBtn: { border: '1px solid var(--cream-border)', background: '#fff', color: 'var(--charcoal-soft)', padding: '6px 12px', borderRadius: 8, fontSize: 12 },
-  addToListBtn: { border: 'none', background: 'var(--primary)', color: '#fff', padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600 },
+  editBtn: { border: '1px solid var(--cream-border)', background: '#fff', color: 'var(--charcoal-soft)', padding: '6px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer' },
+  addToListBtn: { border: 'none', background: 'var(--primary)', color: '#fff', padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' },
   sheetOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 20 },
   sheet: { background: '#fff', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 500, maxHeight: '92vh', overflowY: 'auto', padding: '0 0 32px' },
   sheetHandle: { width: 36, height: 4, background: 'var(--cream-border)', borderRadius: 2, margin: '12px auto 16px' },
   formWrap: { padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 14 },
   formTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, margin: 0, color: 'var(--charcoal)' },
-  fieldLabel: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
+  fieldLabel: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)', margin: 0 },
   input: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 15, background: '#fff', color: 'var(--charcoal)', boxSizing: 'border-box' },
   textarea: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 14, background: '#fff', color: 'var(--charcoal)', resize: 'vertical', lineHeight: 1.6, fontFamily: 'var(--font-body)' },
   dropdown: { background: '#fff', border: '1px solid var(--cream-border)', borderRadius: 8, marginTop: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', overflow: 'hidden' },
-  dropdownItem: { width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: 14, borderBottom: '0.5px solid var(--cream-border)', color: 'var(--charcoal)' },
+  dropdownItem: { width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: 14, borderBottom: '0.5px solid var(--cream-border)', color: 'var(--charcoal)', cursor: 'pointer' },
   noResults: { padding: '10px 12px', fontSize: 13, color: 'var(--charcoal-soft)', borderBottom: '0.5px solid var(--cream-border)' },
-  dropdownAddBtn: { width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: 14, color: 'var(--accent)', fontWeight: 600 },
+  dropdownAddBtn: { width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: 14, color: 'var(--accent)', fontWeight: 600, cursor: 'pointer' },
   addItemBox: { background: 'var(--cream)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 12, border: '1px solid var(--accent-light)' },
   addItemTitle: { margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--accent)', fontFamily: 'var(--font-display)' },
   ingEditList: { display: 'flex', flexDirection: 'column', gap: 6 },
   ingEditRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--cream)', borderRadius: 8, padding: '8px 12px' },
   ingEditName: { fontSize: 14, color: 'var(--charcoal)', flex: 1 },
   qtyRow: { display: 'flex', alignItems: 'center', gap: 6 },
-  qtyBtn: { width: 26, height: 26, borderRadius: 6, border: '1px solid var(--cream-border)', background: '#fff', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--accent)' },
+  qtyBtn: { width: 26, height: 26, borderRadius: 6, border: '1px solid var(--cream-border)', background: '#fff', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--accent)', cursor: 'pointer' },
   qtyNum: { fontSize: 14, fontFamily: 'var(--font-mono)', minWidth: 16, textAlign: 'center', color: 'var(--charcoal)' },
   deleteBox: { background: 'var(--cream)', borderRadius: 10, padding: 14 },
   formActions: { display: 'flex', gap: 10 },
-  cancelBtn: { flex: 1, padding: 11, borderRadius: 8, border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal)', fontWeight: 600 },
-  confirmBtn: { flex: 1, padding: 11, borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 600 },
-  deleteLink: { border: 'none', background: 'none', color: 'var(--danger)', fontSize: 13, textAlign: 'center', textDecoration: 'underline', marginTop: 4 },
+  cancelBtn: { flex: 1, padding: 11, borderRadius: 8, border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal)', fontWeight: 600, cursor: 'pointer' },
+  confirmBtn: { flex: 1, padding: 11, borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 600, cursor: 'pointer' },
+  deleteLink: { border: 'none', background: 'none', color: 'var(--danger)', fontSize: 13, textAlign: 'center', textDecoration: 'underline', cursor: 'pointer' },
 }
