@@ -7,9 +7,12 @@ export function useStoreData() {
   const [sections, setSections] = useState([])
   const [inventory, setInventory] = useState([])
   const [lists, setLists] = useState([])
+  const [listMembers, setListMembers] = useState([]) // { list_id, user_id }
   const [listItems, setListItems] = useState([])
   const [meals, setMeals] = useState([])
+  const [mealMembers, setMealMembers] = useState([])
   const [mealIngredients, setMealIngredients] = useState([])
+  const [householdMembers, setHouseholdMembers] = useState([]) // { user_id, display_name }
   const [activeListId, setActiveListId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -18,11 +21,13 @@ export function useStoreData() {
     setLoading(true)
     setError(null)
 
-    const [sectionsRes, inventoryRes, listsRes, mealsRes, ingredientsRes] = await Promise.all([
+    const [sectionsRes, inventoryRes, listsRes, listMembersRes, mealsRes, mealMembersRes, ingredientsRes] = await Promise.all([
       supabase.from('store_sections').select('*').order('sort_order'),
       supabase.from('inventory_items').select('*').order('name'),
       supabase.from('lists').select('*').order('created_at'),
+      supabase.from('list_members').select('*'),
       supabase.from('meals').select('*').order('name'),
+      supabase.from('meal_members').select('*'),
       supabase.from('meal_ingredients').select('*'),
     ])
 
@@ -35,7 +40,9 @@ export function useStoreData() {
     setSections(sectionsRes.data)
     setInventory(inventoryRes.data)
     setLists(listsRes.data)
+    setListMembers(listMembersRes.data || [])
     setMeals(mealsRes.data)
+    setMealMembers(mealMembersRes.data || [])
     setMealIngredients(ingredientsRes.data)
 
     setActiveListId(cur => {
@@ -45,12 +52,22 @@ export function useStoreData() {
 
     if (listsRes.data.length > 0) {
       const ids = listsRes.data.map(l => l.id)
-      const { data, error } = await supabase
-        .from('list_items').select('*').in('list_id', ids).order('added_at')
+      const { data, error } = await supabase.from('list_items').select('*').in('list_id', ids).order('added_at')
       if (error) setError(error)
       else setListItems(data)
     } else {
       setListItems([])
+    }
+
+    // Load household members with display names
+    const { data: hmData } = await supabase
+      .from('household_members')
+      .select('user_id, profiles(display_name)')
+    if (hmData) {
+      setHouseholdMembers(hmData.map(hm => ({
+        user_id: hm.user_id,
+        display_name: hm.profiles?.display_name || 'Unknown',
+      })))
     }
 
     setLoading(false)
@@ -58,7 +75,6 @@ export function useStoreData() {
 
   useEffect(() => { if (user) loadAll() }, [user, loadAll])
 
-  // Realtime sync on list_items
   useEffect(() => {
     if (!user) return
     const channel = supabase.channel('list_items_rt')
@@ -76,24 +92,41 @@ export function useStoreData() {
     return () => supabase.removeChannel(channel)
   }, [user])
 
-  // ── Helpers ──
   async function getHouseholdId() {
-    const { data, error } = await supabase
-      .from('household_members').select('household_id')
-      .eq('user_id', user.id).limit(1).single()
+    const { data, error } = await supabase.from('household_members').select('household_id').eq('user_id', user.id).limit(1).single()
     if (error) throw error
     return data.household_id
   }
 
   // ── List mutations ──
-  async function createList(name, isShared) {
+  async function createList(name, sharedWithUserIds = []) {
     const household_id = await getHouseholdId()
-    const { data, error } = await supabase
-      .from('lists').insert({ household_id, name, is_shared: isShared, created_by: user.id })
-      .select().single()
+    const { data: list, error } = await supabase.from('lists').insert({ household_id, name, created_by: user.id }).select().single()
     if (error) throw error
-    setLists(cur => [...cur, data])
-    return data
+    setLists(cur => [...cur, list])
+
+    if (sharedWithUserIds.length > 0) {
+      const rows = sharedWithUserIds.map(uid => ({ list_id: list.id, user_id: uid }))
+      const { data: members, error: mErr } = await supabase.from('list_members').insert(rows).select()
+      if (!mErr && members) setListMembers(cur => [...cur, ...members])
+    }
+    return list
+  }
+
+  async function updateList(id, name, sharedWithUserIds = []) {
+    const { data, error } = await supabase.from('lists').update({ name }).eq('id', id).select().single()
+    if (error) throw error
+    setLists(cur => cur.map(l => l.id === id ? data : l))
+
+    // Replace members
+    await supabase.from('list_members').delete().eq('list_id', id)
+    let newMembers = []
+    if (sharedWithUserIds.length > 0) {
+      const rows = sharedWithUserIds.map(uid => ({ list_id: id, user_id: uid }))
+      const { data: members } = await supabase.from('list_members').insert(rows).select()
+      if (members) newMembers = members
+    }
+    setListMembers(cur => [...cur.filter(m => m.list_id !== id), ...newMembers])
   }
 
   async function deleteList(id) {
@@ -101,17 +134,11 @@ export function useStoreData() {
     if (error) throw error
     setLists(cur => cur.filter(l => l.id !== id))
     setListItems(cur => cur.filter(i => i.list_id !== id))
+    setListMembers(cur => cur.filter(m => m.list_id !== id))
     if (activeListId === id) {
       const remaining = lists.filter(l => l.id !== id)
       setActiveListId(remaining[0]?.id || null)
     }
-  }
-
-  async function updateList(id, updates) {
-    const { data, error } = await supabase
-      .from('lists').update(updates).eq('id', id).select().single()
-    if (error) throw error
-    setLists(cur => cur.map(l => l.id === id ? data : l))
   }
 
   // ── List item mutations ──
@@ -119,29 +146,20 @@ export function useStoreData() {
     if (!listId) throw new Error('No active list')
     const existing = listItems.find(i => i.list_id === listId && i.inventory_item_id === inventoryItem.id)
     if (existing) return updateQuantity(existing, existing.quantity + 1)
-
     const { data, error } = await supabase.from('list_items').insert({
-      list_id: listId,
-      item_type: 'inventory',
-      inventory_item_id: inventoryItem.id,
-      name: inventoryItem.name,
-      section_id: inventoryItem.section_id,
-      est_price: inventoryItem.est_price,
-      quantity: 1,
-      added_by: user.id,
+      list_id: listId, item_type: 'inventory', inventory_item_id: inventoryItem.id,
+      name: inventoryItem.name, section_id: inventoryItem.section_id,
+      est_price: inventoryItem.est_price, quantity: 1, added_by: user.id,
     }).select().single()
     if (error) throw error
     setListItems(cur => [...cur, data])
   }
 
-  async function addFreetextItemToList(name, listId = activeListId) {
+  async function addFreetextItemToList(name, estPrice, listId = activeListId) {
     if (!listId || !name.trim()) throw new Error('No active list or empty name')
     const { data, error } = await supabase.from('list_items').insert({
-      list_id: listId,
-      item_type: 'freetext',
-      name: name.trim(),
-      quantity: 1,
-      added_by: user.id,
+      list_id: listId, item_type: 'freetext', name: name.trim(),
+      est_price: estPrice ? Number(estPrice) : null, quantity: 1, added_by: user.id,
     }).select().single()
     if (error) throw error
     setListItems(cur => [...cur, data])
@@ -151,7 +169,6 @@ export function useStoreData() {
     if (!listId) throw new Error('No active list')
     const ings = mealIngredients.filter(i => i.meal_id === meal.id)
     const invMap = new Map(inventory.map(i => [i.id, i]))
-
     for (const ing of ings) {
       const invItem = ing.inventory_item_id ? invMap.get(ing.inventory_item_id) : null
       const existing = listItems.find(i => i.list_id === listId && i.inventory_item_id === ing.inventory_item_id && ing.inventory_item_id)
@@ -159,14 +176,12 @@ export function useStoreData() {
         await updateQuantity(existing, existing.quantity + ing.quantity)
       } else {
         const { data, error } = await supabase.from('list_items').insert({
-          list_id: listId,
-          item_type: 'inventory',
+          list_id: listId, item_type: 'inventory',
           inventory_item_id: ing.inventory_item_id || null,
           name: invItem?.name || ing.name,
           section_id: invItem?.section_id || null,
           est_price: invItem?.est_price || null,
-          quantity: ing.quantity,
-          added_by: user.id,
+          quantity: ing.quantity, added_by: user.id,
         }).select().single()
         if (error) throw error
         setListItems(cur => [...cur, data])
@@ -176,15 +191,13 @@ export function useStoreData() {
 
   async function updateQuantity(listItem, newQty) {
     if (newQty < 1) return removeFromList(listItem.id)
-    const { data, error } = await supabase
-      .from('list_items').update({ quantity: newQty }).eq('id', listItem.id).select().single()
+    const { data, error } = await supabase.from('list_items').update({ quantity: newQty }).eq('id', listItem.id).select().single()
     if (error) throw error
     setListItems(cur => cur.map(i => i.id === data.id ? data : i))
   }
 
   async function toggleChecked(listItem) {
-    const { data, error } = await supabase
-      .from('list_items').update({ is_checked: !listItem.is_checked }).eq('id', listItem.id).select().single()
+    const { data, error } = await supabase.from('list_items').update({ is_checked: !listItem.is_checked }).eq('id', listItem.id).select().single()
     if (error) throw error
     setListItems(cur => cur.map(i => i.id === data.id ? data : i))
   }
@@ -206,16 +219,14 @@ export function useStoreData() {
   // ── Inventory mutations ──
   async function addInventoryItem(item) {
     const household_id = await getHouseholdId()
-    const { data, error } = await supabase
-      .from('inventory_items').insert({ household_id, ...item }).select().single()
+    const { data, error } = await supabase.from('inventory_items').insert({ household_id, ...item }).select().single()
     if (error) throw error
     setInventory(cur => [...cur, data].sort((a, b) => a.name.localeCompare(b.name)))
     return data
   }
 
   async function updateInventoryItem(id, updates) {
-    const { data, error } = await supabase
-      .from('inventory_items').update(updates).eq('id', id).select().single()
+    const { data, error } = await supabase.from('inventory_items').update(updates).eq('id', id).select().single()
     if (error) throw error
     setInventory(cur => cur.map(i => i.id === id ? data : i).sort((a, b) => a.name.localeCompare(b.name)))
     return data
@@ -230,16 +241,14 @@ export function useStoreData() {
   async function addSection(name, sortOrder) {
     const household_id = await getHouseholdId()
     const order = sortOrder ?? (sections.reduce((m, s) => Math.max(m, s.sort_order), 0) + 1)
-    const { data, error } = await supabase
-      .from('store_sections').insert({ household_id, name, sort_order: order }).select().single()
+    const { data, error } = await supabase.from('store_sections').insert({ household_id, name, sort_order: order }).select().single()
     if (error) throw error
     setSections(cur => [...cur, data].sort((a, b) => a.sort_order - b.sort_order))
     return data
   }
 
   async function updateSection(id, updates) {
-    const { data, error } = await supabase
-      .from('store_sections').update(updates).eq('id', id).select().single()
+    const { data, error } = await supabase.from('store_sections').update(updates).eq('id', id).select().single()
     if (error) throw error
     setSections(cur => cur.map(s => s.id === id ? data : s).sort((a, b) => a.sort_order - b.sort_order))
   }
@@ -251,35 +260,44 @@ export function useStoreData() {
   }
 
   // ── Meal mutations ──
-  async function addMeal(name, notes, ingredients) {
+  async function addMeal(name, notes, ingredients, sharedWithUserIds = []) {
     const household_id = await getHouseholdId()
-    const { data: meal, error: mealErr } = await supabase
-      .from('meals').insert({ household_id, name, notes }).select().single()
+    const { data: meal, error: mealErr } = await supabase.from('meals').insert({ household_id, name, notes, created_by: user.id }).select().single()
     if (mealErr) throw mealErr
     if (ingredients.length > 0) {
-      const { data: ings, error: ingErr } = await supabase
-        .from('meal_ingredients').insert(ingredients.map(ing => ({ meal_id: meal.id, ...ing }))).select()
+      const { data: ings, error: ingErr } = await supabase.from('meal_ingredients').insert(ingredients.map(ing => ({ meal_id: meal.id, ...ing }))).select()
       if (ingErr) throw ingErr
       setMealIngredients(cur => [...cur, ...ings])
+    }
+    if (sharedWithUserIds.length > 0) {
+      const rows = sharedWithUserIds.map(uid => ({ meal_id: meal.id, user_id: uid }))
+      const { data: members } = await supabase.from('meal_members').insert(rows).select()
+      if (members) setMealMembers(cur => [...cur, ...members])
     }
     setMeals(cur => [...cur, meal].sort((a, b) => a.name.localeCompare(b.name)))
     return meal
   }
 
-  async function updateMeal(id, name, notes, ingredients) {
-    const { data: meal, error: mealErr } = await supabase
-      .from('meals').update({ name, notes }).eq('id', id).select().single()
+  async function updateMeal(id, name, notes, ingredients, sharedWithUserIds = []) {
+    const { data: meal, error: mealErr } = await supabase.from('meals').update({ name, notes }).eq('id', id).select().single()
     if (mealErr) throw mealErr
     await supabase.from('meal_ingredients').delete().eq('meal_id', id)
     let newIngs = []
     if (ingredients.length > 0) {
-      const { data, error } = await supabase
-        .from('meal_ingredients').insert(ingredients.map(ing => ({ meal_id: id, ...ing }))).select()
+      const { data, error } = await supabase.from('meal_ingredients').insert(ingredients.map(ing => ({ meal_id: id, ...ing }))).select()
       if (error) throw error
       newIngs = data
     }
+    await supabase.from('meal_members').delete().eq('meal_id', id)
+    let newMembers = []
+    if (sharedWithUserIds.length > 0) {
+      const rows = sharedWithUserIds.map(uid => ({ meal_id: id, user_id: uid }))
+      const { data } = await supabase.from('meal_members').insert(rows).select()
+      if (data) newMembers = data
+    }
     setMeals(cur => cur.map(m => m.id === id ? meal : m).sort((a, b) => a.name.localeCompare(b.name)))
     setMealIngredients(cur => [...cur.filter(i => i.meal_id !== id), ...newIngs])
+    setMealMembers(cur => [...cur.filter(m => m.meal_id !== id), ...newMembers])
   }
 
   async function deleteMeal(id) {
@@ -287,20 +305,52 @@ export function useStoreData() {
     if (error) throw error
     setMeals(cur => cur.filter(m => m.id !== id))
     setMealIngredients(cur => cur.filter(i => i.meal_id !== id))
+    setMealMembers(cur => cur.filter(m => m.meal_id !== id))
+  }
+
+  // ── Household invites ──
+  async function generateInviteCode() {
+    const household_id = await getHouseholdId()
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase()
+    const { data, error } = await supabase.from('household_invites').insert({
+      household_id, code, created_by: user.id,
+    }).select().single()
+    if (error) throw error
+    return data
+  }
+
+  async function useInviteCode(code) {
+    const { data, error } = await supabase.rpc('use_invite_code', { invite_code: code })
+    if (error) throw error
+    if (data?.error) throw new Error(data.error)
+    await loadAll()
+    return data
+  }
+
+  // ── Profile ──
+  async function updateDisplayName(displayName) {
+    const { error } = await supabase.from('profiles').update({ display_name: displayName }).eq('id', user.id)
+    if (error) throw error
+    setHouseholdMembers(cur => cur.map(m => m.user_id === user.id ? { ...m, display_name: displayName } : m))
   }
 
   const activeList = lists.find(l => l.id === activeListId) || null
   const activeListItems = listItems.filter(i => i.list_id === activeListId)
+  const myProfile = householdMembers.find(m => m.user_id === user?.id)
+  const otherMembers = householdMembers.filter(m => m.user_id !== user?.id)
 
   return {
-    sections, inventory, lists, activeListId, activeList, setActiveListId,
-    listItems: activeListItems, meals, mealIngredients,
+    sections, inventory, lists, listMembers, activeListId, activeList, setActiveListId,
+    listItems: activeListItems, meals, mealMembers, mealIngredients,
+    householdMembers, myProfile, otherMembers,
     loading, error, reload: loadAll,
-    createList, deleteList, updateList,
+    createList, updateList, deleteList,
     addInventoryItemToList, addFreetextItemToList, addMealToList,
     updateQuantity, toggleChecked, removeFromList, clearList,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
     addMeal, updateMeal, deleteMeal,
+    generateInviteCode, useInviteCode,
+    updateDisplayName,
   }
 }
