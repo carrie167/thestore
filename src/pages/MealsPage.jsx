@@ -319,7 +319,10 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {/* Sticky header with Done button — always visible above keyboard */}
       <div style={s.formDoneBar}>
-        <button style={s.formCancelBtn} onClick={onCancel}>Cancel</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button style={s.formCancelBtn} onClick={onCancel}>Cancel</button>
+          {meal && <button style={s.formDeleteIcon} onClick={() => setConfirmDelete(true)} aria-label="Delete meal">🗑</button>}
+        </div>
         <p style={s.formDoneTitle}>{meal ? 'Edit meal' : 'New meal'}</p>
         <button style={s.formDoneBtn} onClick={handleSave} disabled={saving || !name.trim()}>
           {saving ? '…' : 'Done'}
@@ -365,11 +368,11 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
         )}
       </div>
 
-      {/* Ingredients already added — bounded scroll box so it stays compact and the search above always stays reachable */}
+      {/* Ingredients already added */}
       {ingredients.length > 0 && (
         <div>
           <p style={{ ...s.fieldLabel, marginBottom: 8 }}>Ingredients ({ingredients.length})</p>
-          <div style={s.ingEditListScroll}>
+          <div style={s.ingEditList}>
             {ingredients.map((ing, idx) => {
               const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
               return (
@@ -418,18 +421,20 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
         <MemberPicker members={otherMembers} selected={selectedMembers} onChange={setSelectedMembers} label="Share meal with" />
       )}
 
-      {confirmDelete ? (
-        <div style={s.deleteBox}>
-          <p style={{ fontSize: 14, margin: '0 0 12px', color: 'var(--charcoal)' }}>Delete "{meal?.name}"?</p>
-          <div style={s.formActions}>
-            <button style={s.cancelBtn} onClick={() => setConfirmDelete(false)}>Cancel</button>
-            <button style={s.confirmBtn} onClick={onDelete}>Delete</button>
+      </div>
+
+      {confirmDelete && (
+        <div style={s.overlay} onClick={() => setConfirmDelete(false)}>
+          <div style={s.modal} onClick={e => e.stopPropagation()}>
+            <p style={s.modalTitle}>Delete "{meal?.name}"?</p>
+            <p style={s.modalBody}>This removes the meal and its ingredient list. Can't be undone.</p>
+            <div style={s.formActions}>
+              <button style={s.cancelBtn} onClick={() => setConfirmDelete(false)}>Cancel</button>
+              <button style={{ ...s.confirmBtn, background: 'var(--danger)' }} onClick={onDelete}>Delete</button>
+            </div>
           </div>
         </div>
-      ) : (
-        meal && <button style={s.deleteLink} onClick={() => setConfirmDelete(true)}>Delete meal</button>
       )}
-      </div>
     </div>
   )
 }
@@ -487,6 +492,7 @@ const s = {
   formDoneTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, margin: 0, color: 'var(--charcoal)' },
   formDoneBtn: { border: 'none', background: 'var(--primary)', color: '#fff', borderRadius: 8, padding: '7px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   formCancelBtn: { border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 14, padding: '7px 4px', cursor: 'pointer' },
+  formDeleteIcon: { border: 'none', background: 'none', color: 'var(--danger)', fontSize: 16, padding: '7px 4px', cursor: 'pointer', lineHeight: 1 },
   formWrap: { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 },
   formTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, margin: 0, color: 'var(--charcoal)' },
   fieldLabel: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)', margin: 0 },
@@ -499,13 +505,15 @@ const s = {
   addItemBox: { background: 'var(--cream)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 12, border: '1px solid var(--accent-light)' },
   addItemTitle: { margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--accent)', fontFamily: 'var(--font-display)' },
   ingEditList: { display: 'flex', flexDirection: 'column', gap: 6 },
-  ingEditListScroll: { display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '38vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', padding: 2 },
   ingEditRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--cream)', borderRadius: 8, padding: '8px 12px' },
   ingEditName: { fontSize: 14, color: 'var(--charcoal)', flex: 1 },
   qtyRow: { display: 'flex', alignItems: 'center', gap: 6 },
   qtyBtn: { width: 26, height: 26, borderRadius: 6, border: '1px solid var(--cream-border)', background: '#fff', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--accent)', cursor: 'pointer' },
   qtyNum: { fontSize: 14, fontFamily: 'var(--font-mono)', minWidth: 16, textAlign: 'center', color: 'var(--charcoal)' },
-  deleteBox: { background: 'var(--cream)', borderRadius: 10, padding: 14 },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 30 },
+  modal: { background: '#fff', borderRadius: 14, padding: '24px 20px', maxWidth: 320, width: '100%' },
+  modalTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, margin: '0 0 6px', color: 'var(--charcoal)' },
+  modalBody: { fontSize: 14, color: 'var(--charcoal-soft)', margin: '0 0 20px', lineHeight: 1.5 },
   formActions: { display: 'flex', gap: 10 },
   cancelBtn: { flex: 1, padding: 11, borderRadius: 8, border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal)', fontWeight: 600, cursor: 'pointer' },
   confirmBtn: { flex: 1, padding: 11, borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 600, cursor: 'pointer' },
