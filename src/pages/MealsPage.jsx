@@ -295,8 +295,16 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
   }
 
   return (
-    <div style={s.formWrap}>
-      <p style={s.formTitle}>{meal ? 'Edit meal' : 'New meal'}</p>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* Sticky header with Done button — always visible above keyboard */}
+      <div style={s.formDoneBar}>
+        <button style={s.formCancelBtn} onClick={onCancel}>Cancel</button>
+        <p style={s.formDoneTitle}>{meal ? 'Edit meal' : 'New meal'}</p>
+        <button style={s.formDoneBtn} onClick={handleSave} disabled={saving || !name.trim()}>
+          {saving ? '…' : 'Done'}
+        </button>
+      </div>
+      <div style={s.formWrap}>
 
       <label style={s.fieldLabel}>Meal name
         <input autoFocus style={s.input} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Chicken Stir Fry" />
@@ -391,14 +399,9 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
           </div>
         </div>
       ) : (
-        <>
-          <div style={s.formActions}>
-            <button style={s.cancelBtn} onClick={onCancel}>Cancel</button>
-            <button style={s.confirmBtn} onClick={handleSave} disabled={saving || !name.trim()}>{saving ? 'Saving…' : meal ? 'Save' : 'Add meal'}</button>
-          </div>
-          {meal && <button style={s.deleteLink} onClick={() => setConfirmDelete(true)}>Delete meal</button>}
-        </>
+        meal && <button style={s.deleteLink} onClick={() => setConfirmDelete(true)}>Delete meal</button>
       )}
+      </div>
     </div>
   )
 }
@@ -449,13 +452,17 @@ const s = {
   editBtn: { border: '1px solid var(--cream-border)', background: '#fff', color: 'var(--charcoal-soft)', padding: '6px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer' },
   addToListBtn: { border: 'none', background: 'var(--primary)', color: '#fff', padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' },
   sheetOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 20 },
-  sheet: { background: '#fff', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 500, maxHeight: '92vh', overflowY: 'auto', padding: '0 0 32px' },
+  sheet: { background: '#fff', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 500, maxHeight: '92vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 40 },
   sheetHandle: { width: 36, height: 4, background: 'var(--cream-border)', borderRadius: 2, margin: '12px auto 16px' },
-  formWrap: { padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 14 },
+  formDoneBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', position: 'sticky', top: 0, background: '#fff', zIndex: 1, borderBottom: '0.5px solid var(--cream-border)' },
+  formDoneTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, margin: 0, color: 'var(--charcoal)' },
+  formDoneBtn: { border: 'none', background: 'var(--primary)', color: '#fff', borderRadius: 8, padding: '7px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
+  formCancelBtn: { border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 14, padding: '7px 4px', cursor: 'pointer' },
+  formWrap: { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 },
   formTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, margin: 0, color: 'var(--charcoal)' },
   fieldLabel: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)', margin: 0 },
   input: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 15, background: '#fff', color: 'var(--charcoal)', boxSizing: 'border-box' },
-  textarea: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 14, background: '#fff', color: 'var(--charcoal)', resize: 'vertical', lineHeight: 1.6, fontFamily: 'var(--font-body)' },
+  textarea: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 14, background: '#fff', color: 'var(--charcoal)', resize: 'vertical', lineHeight: 1.6, fontFamily: 'var(--font-body)', minHeight: 160, overflowY: 'auto' },
   dropdown: { background: '#fff', border: '1px solid var(--cream-border)', borderRadius: 8, marginTop: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', overflow: 'hidden' },
   dropdownItem: { width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: 14, borderBottom: '0.5px solid var(--cream-border)', color: 'var(--charcoal)', cursor: 'pointer' },
   noResults: { padding: '10px 12px', fontSize: 13, color: 'var(--charcoal-soft)', borderBottom: '0.5px solid var(--cream-border)' },
