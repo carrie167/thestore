@@ -212,7 +212,7 @@ const s = {
   email: { margin: 0, fontSize: 14, color: 'var(--charcoal)', fontFamily: 'var(--font-mono)', fontWeight: 500 },
   fieldLabel: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
   inputRow: { display: 'flex', gap: 8 },
-  input: { flex: 1, border: '1px solid var(--cream-border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, background: 'var(--cream-light)', color: 'var(--charcoal)' },
+  input: { flex: 1, border: '1px solid var(--cream-border)', borderRadius: 8, padding: '10px 12px', fontSize: 16, background: 'var(--cream-light)', color: 'var(--charcoal)' },
   saveBtn: { border: 'none', background: 'var(--primary)', color: '#fff', borderRadius: 8, padding: '10px 16px', fontSize: 13, fontWeight: 600, flexShrink: 0 },
   signOutBtn: { border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal-soft)', borderRadius: 8, padding: '9px 14px', fontSize: 13, alignSelf: 'flex-start', textDecoration: 'underline' },
   themeGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
