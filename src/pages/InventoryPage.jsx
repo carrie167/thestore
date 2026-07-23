@@ -130,7 +130,10 @@ export default function InventoryPage({
           <div style={s.sheetInner}>
             <div style={s.sheetHeaderRow}>
               <p style={s.sheetTitle}>Aisles</p>
-              <button style={s.addBtn} onClick={() => setShowNewSection(true)}>+ Aisle</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button style={s.addBtn} onClick={() => setShowNewSection(true)}>+ Aisle</button>
+                <button style={s.doneBtn} onClick={() => { setShowAisles(false); setEditingSection(null) }}>Done</button>
+              </div>
             </div>
             {[...sections].sort((a, b) => a.sort_order - b.sort_order).map(section =>
               editingSection?.id === section.id ? (
@@ -311,6 +314,7 @@ const s = {
   header: { background: '#fff', padding: '10px 14px', borderBottom: '0.5px solid var(--cream-border)' },
   aislesBtn: { border: '1px solid rgba(255,255,255,0.4)', background: 'none', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600, color: '#fff' },
   addBtn: { border: 'none', background: 'var(--sage)', color: '#fff', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600 },
+  doneBtn: { border: '1px solid var(--cream-border)', background: '#fff', color: 'var(--charcoal)', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600 },
   addingTo: { fontSize: 13, color: 'var(--charcoal-soft)', margin: '0 0 10px' },
   search: { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--cream-border)', fontSize: 15, background: 'var(--cream-light)', marginBottom: 8, boxSizing: 'border-box' },
   filterRow: { display: 'flex', gap: 8, alignItems: 'center', paddingBottom: 2 },
@@ -345,6 +349,6 @@ const s = {
   deleteBox: { background: 'var(--cream)', borderRadius: 10, padding: 14 },
   formActions: { display: 'flex', gap: 10 },
   cancelBtn: { flex: 1, padding: 11, borderRadius: 8, border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal)', fontWeight: 600 },
-  confirmBtn: { flex: 1, padding: 11, borderRadius: 8, border: 'none', background: 'var(--teal)', color: '#fff', fontWeight: 600 },
+  confirmBtn: { flex: 1, padding: 11, borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 600 },
   deleteLink: { border: 'none', background: 'none', color: 'var(--danger)', fontSize: 13, textAlign: 'center', textDecoration: 'underline', marginTop: 4 },
 }
