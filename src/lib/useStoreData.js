@@ -178,21 +178,22 @@ export function useStoreData() {
     const invMap = new Map(inventory.map(i => [i.id, i]))
     for (const ing of ings) {
       const invItem = ing.inventory_item_id ? invMap.get(ing.inventory_item_id) : null
-      const existing = listItems.find(i => i.list_id === listId && i.inventory_item_id === ing.inventory_item_id && ing.inventory_item_id)
-      if (existing) {
-        await updateQuantity(existing, existing.quantity + ing.quantity)
-      } else {
-        const { data, error } = await supabase.from('list_items').insert({
-          list_id: listId, item_type: 'inventory',
-          inventory_item_id: ing.inventory_item_id || null,
-          name: invItem?.name || ing.name,
-          section_id: invItem?.section_id || null,
-          est_price: invItem?.est_price || null,
-          quantity: ing.quantity, added_by: user.id,
-        }).select().single()
-        if (error) throw error
-        setListItems(cur => [...cur, data])
-      }
+      // Always insert a new row per meal — no merging
+      // This lets us track which meal each item came from
+      const { data, error } = await supabase.from('list_items').insert({
+        list_id: listId,
+        item_type: 'inventory',
+        inventory_item_id: ing.inventory_item_id || null,
+        name: invItem?.name || ing.name,
+        section_id: invItem?.section_id || null,
+        est_price: invItem?.est_price || null,
+        quantity: ing.quantity,
+        added_by: user.id,
+        source_meal_id: meal.id,
+        source_meal_name: meal.name,
+      }).select().single()
+      if (error) throw error
+      setListItems(cur => [...cur, data])
     }
   }
 
