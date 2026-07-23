@@ -3,7 +3,7 @@ import PageHeader from '../components/PageHeader'
 
 export default function InventoryPage({
   sections, inventory, listItems, activeList,
-  onAddToList, onAddInventoryItem, onUpdateInventoryItem, onDeleteInventoryItem,
+  onAddToList, onDecrementFromList, onAddInventoryItem, onUpdateInventoryItem, onDeleteInventoryItem,
   onAddSection, onUpdateSection, onDeleteSection, onMenuOpen,
 }) {
   const [query, setQuery] = useState('')
@@ -15,10 +15,14 @@ export default function InventoryPage({
   const [editingSection, setEditingSection] = useState(null)
   const [showNewSection, setShowNewSection] = useState(false)
 
-  const listedIds = useMemo(
-    () => new Set(listItems.map(i => i.inventory_item_id).filter(Boolean)),
-    [listItems]
-  )
+  const cartQtyByItemId = useMemo(() => {
+    const map = new Map()
+    for (const li of listItems) {
+      if (!li.inventory_item_id) continue
+      map.set(li.inventory_item_id, (map.get(li.inventory_item_id) || 0) + (li.quantity || 1))
+    }
+    return map
+  }, [listItems])
 
   const sectionById = useMemo(() => {
     const map = new Map(); sections.forEach(s => map.set(s.id, s)); return map
@@ -92,13 +96,13 @@ export default function InventoryPage({
         {!isFiltering && staples.length > 0 && (
           <div>
             <div style={{ ...s.aisleHeader, background: 'var(--primary-dark)' }}>★ Staples</div>
-            {staples.map(item => <InventoryRow key={item.id} item={item} inList={listedIds.has(item.id)} onAdd={onAddToList} onEdit={() => setEditingItem(item)} />)}
+            {staples.map(item => <InventoryRow key={item.id} item={item} qty={cartQtyByItemId.get(item.id) || 0} onAdd={onAddToList} onDecrement={onDecrementFromList} onEdit={() => setEditingItem(item)} />)}
           </div>
         )}
         {grouped.map(({ section, items }) => (
           <div key={section.id}>
             <div style={s.aisleHeader}>{section.name}</div>
-            {items.map(item => <InventoryRow key={item.id} item={item} inList={listedIds.has(item.id)} onAdd={onAddToList} onEdit={() => setEditingItem(item)} />)}
+            {items.map(item => <InventoryRow key={item.id} item={item} qty={cartQtyByItemId.get(item.id) || 0} onAdd={onAddToList} onDecrement={onDecrementFromList} onEdit={() => setEditingItem(item)} />)}
           </div>
         ))}
         {filtered.length === 0 && (
@@ -168,7 +172,7 @@ export default function InventoryPage({
   )
 }
 
-function InventoryRow({ item, inList, onAdd, onEdit }) {
+function InventoryRow({ item, qty, onAdd, onDecrement, onEdit }) {
   return (
     <div style={s.row}>
       <button style={s.rowMain} onClick={() => onAdd(item)}>
@@ -177,9 +181,15 @@ function InventoryRow({ item, inList, onAdd, onEdit }) {
           <span style={s.rowPrice}>${Number(item.est_price).toFixed(2)}{item.price_is_estimate && <span style={s.est}> est.</span>}</span>
         )}
       </button>
-      <button style={{ ...s.addCircle, background: inList ? 'var(--sage-dark)' : 'var(--primary)' }} onClick={() => onAdd(item)}>
-        {inList ? '✓' : '+'}
-      </button>
+      {qty > 0 ? (
+        <div style={s.cartQtyRow}>
+          <button style={s.cartQtyBtn} onClick={() => onDecrement(item)}>−</button>
+          <span style={s.cartQtyNum}>{qty}</span>
+          <button style={s.cartQtyBtn} onClick={() => onAdd(item)}>+</button>
+        </div>
+      ) : (
+        <button style={{ ...s.addCircle, background: 'var(--primary)' }} onClick={() => onAdd(item)}>+</button>
+      )}
       <button style={s.editIcon} onClick={onEdit}>✎</button>
     </div>
   )
@@ -329,6 +339,9 @@ const s = {
   rowPrice: { fontSize: 12, color: 'var(--tan)', fontFamily: 'var(--font-mono)' },
   est: { fontSize: 10, fontFamily: 'var(--font-body)', opacity: 0.7 },
   addCircle: { width: 34, height: 34, borderRadius: 8, border: 'none', color: '#fff', fontSize: 18, fontWeight: 700, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  cartQtyRow: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, background: 'var(--sage)', borderRadius: 8, padding: 3 },
+  cartQtyBtn: { width: 26, height: 26, borderRadius: 6, border: 'none', background: '#fff', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--sage-dark)', cursor: 'pointer', fontWeight: 700 },
+  cartQtyNum: { fontSize: 13, fontFamily: 'var(--font-mono)', minWidth: 16, textAlign: 'center', color: 'var(--sage-dark)', fontWeight: 700 },
   editIcon: { border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 16, padding: '0 4px', flexShrink: 0 },
   empty: { padding: '40px 20px', textAlign: 'center' },
   emptyTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, margin: '0 0 6px', color: 'var(--charcoal)' },
