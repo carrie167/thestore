@@ -203,7 +203,9 @@ export default function MealsPage({
                         <span style={{ fontSize: 14, color: 'var(--charcoal-soft)' }}>{notesExpanded ? '∧' : '∨'}</span>
                       </button>
                       {notesExpanded && (
-                        <p style={s.notesText}>{meal.notes}</p>
+                        <div style={s.notesScrollBox}>
+                          <p style={s.notesText}>{meal.notes}</p>
+                        </div>
                       )}
                     </div>
                   )}
@@ -447,7 +449,8 @@ const s = {
   notesSection: { borderTop: '0.5px solid var(--cream-border)', background: '#fff' },
   notesToggle: { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' },
   notesLabel: { fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
-  notesText: { margin: 0, fontSize: 13, color: 'var(--charcoal-soft)', lineHeight: 1.6, whiteSpace: 'pre-wrap', padding: '0 14px 12px' },
+  notesScrollBox: { maxHeight: '42vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', borderTop: '0.5px solid var(--cream-border)', background: 'var(--cream)' },
+  notesText: { margin: 0, fontSize: 14, color: 'var(--charcoal-soft)', lineHeight: 1.7, whiteSpace: 'pre-wrap', padding: '12px 14px 14px' },
   cardActions: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderTop: '0.5px solid var(--cream-border)' },
   editBtn: { border: '1px solid var(--cream-border)', background: '#fff', color: 'var(--charcoal-soft)', padding: '6px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer' },
   addToListBtn: { border: 'none', background: 'var(--primary)', color: '#fff', padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' },
