@@ -114,7 +114,7 @@ export default function MealsPage({
         {meals.length === 0 && (
           <div style={s.empty}>
             <p style={s.emptyTitle}>No meals yet</p>
-            <p style={s.emptyBody}>Tap "+ Meal" to add a recipe. Tap "Add to list" and all ingredients go straight to your active cart.</p>
+            <p style={s.emptyBody}>Tap "+ Meal" to add a recipe. Tap "Add to cart" and all ingredients go straight to your active cart.</p>
           </div>
         )}
 
