@@ -510,7 +510,7 @@ const s = {
   addItemBox: { background: 'var(--cream)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 12, border: '1px solid var(--accent-light)' },
   addItemTitle: { margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--accent)', fontFamily: 'var(--font-display)' },
   ingEditList: { display: 'flex', flexDirection: 'column', gap: 6 },
-  ingEditListScroll: { display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '46vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', border: '1px solid var(--cream-border)', borderRadius: 10, padding: 6 },
+  ingEditListScroll: { display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid var(--cream-border)', borderRadius: 10, padding: 6 },
   ingEditRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--cream)', borderRadius: 8, padding: '8px 12px' },
   ingEditName: { fontSize: 14, color: 'var(--charcoal)', flex: 1 },
   qtyRow: { display: 'flex', alignItems: 'center', gap: 6 },
