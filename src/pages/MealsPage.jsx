@@ -347,28 +347,6 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
         </div>
       </div>
 
-      {/* Ingredients already added — shown first so it never scrolls out of view while you're still searching for more */}
-      {ingredients.length > 0 && (
-        <div>
-          <p style={{ ...s.fieldLabel, marginBottom: 8 }}>Ingredients ({ingredients.length})</p>
-          <div style={s.ingEditList}>
-            {ingredients.map((ing, idx) => {
-              const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
-              return (
-                <div key={idx} style={s.ingEditRow}>
-                  <span style={s.ingEditName}>{item?.name || ing.name}</span>
-                  <div style={s.qtyRow}>
-                    <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity - 1)}>−</button>
-                    <span style={s.qtyNum}>{ing.quantity}</span>
-                    <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity + 1)}>+</button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Ingredient search */}
       <div>
         <label style={s.fieldLabel}>Add ingredients
@@ -386,6 +364,28 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
           </div>
         )}
       </div>
+
+      {/* Ingredients already added — bounded scroll box so it stays compact and the search above always stays reachable */}
+      {ingredients.length > 0 && (
+        <div>
+          <p style={{ ...s.fieldLabel, marginBottom: 8 }}>Ingredients ({ingredients.length})</p>
+          <div style={s.ingEditListScroll}>
+            {ingredients.map((ing, idx) => {
+              const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
+              return (
+                <div key={idx} style={s.ingEditRow}>
+                  <span style={s.ingEditName}>{item?.name || ing.name}</span>
+                  <div style={s.qtyRow}>
+                    <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity - 1)}>−</button>
+                    <span style={s.qtyNum}>{ing.quantity}</span>
+                    <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity + 1)}>+</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {showAddInventory && (
         <div style={s.addItemBox}>
@@ -499,6 +499,7 @@ const s = {
   addItemBox: { background: 'var(--cream)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 12, border: '1px solid var(--accent-light)' },
   addItemTitle: { margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--accent)', fontFamily: 'var(--font-display)' },
   ingEditList: { display: 'flex', flexDirection: 'column', gap: 6 },
+  ingEditListScroll: { display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '38vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', padding: 2 },
   ingEditRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--cream)', borderRadius: 8, padding: '8px 12px' },
   ingEditName: { fontSize: 14, color: 'var(--charcoal)', flex: 1 },
   qtyRow: { display: 'flex', alignItems: 'center', gap: 6 },
