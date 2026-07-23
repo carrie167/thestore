@@ -1,6 +1,6 @@
 export default function Sidebar({ isOpen, onClose, activeTab, onNavigate, myProfile, householdMembers }) {
   const NAV = [
-    { id: 'list', label: 'List', icon: '🛒' },
+    { id: 'list', label: 'Carts', icon: '🛒' },
     { id: 'inventory', label: 'Inventory', icon: '📦' },
     { id: 'meals', label: 'Meals', icon: '🍽️' },
   ]
