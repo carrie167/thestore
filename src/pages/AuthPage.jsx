@@ -81,7 +81,7 @@ const s = {
   tagline: { margin: '6px 0 28px', color: 'var(--charcoal-soft)', fontSize: 14 },
   form: { display: 'flex', flexDirection: 'column', gap: 16 },
   label: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
-  input: { padding: '11px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 15, background: '#fff', color: 'var(--charcoal)' },
+  input: { padding: '11px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 16, background: '#fff', color: 'var(--charcoal)' },
   passwordWrap: { display: 'flex', alignItems: 'stretch' },
   eyeBtn: { padding: '0 12px', border: '1px solid var(--cream-border)', borderLeft: 'none', borderRadius: '0 8px 8px 0', background: '#fff', fontSize: 16, cursor: 'pointer' },
   submit: { marginTop: 8, padding: 12, borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 600, fontSize: 15 },
