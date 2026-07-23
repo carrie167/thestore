@@ -20,7 +20,7 @@ function AppShell() {
     householdMembers, myProfile, otherMembers,
     loading, error,
     createList, updateList, deleteList,
-    addInventoryItemToList, addFreetextItemToList, addMealToList,
+    addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList,
     updateQuantity, toggleChecked, removeFromList, clearList,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
@@ -61,7 +61,8 @@ function AppShell() {
         {tab === 'inventory' && (
           <InventoryPage
             sections={sections} inventory={inventory} listItems={listItems} activeList={activeList}
-            onAddToList={addInventoryItemToList} onAddInventoryItem={addInventoryItem}
+            onAddToList={addInventoryItemToList} onDecrementFromList={decrementInventoryItemInList}
+            onAddInventoryItem={addInventoryItem}
             onUpdateInventoryItem={updateInventoryItem} onDeleteInventoryItem={deleteInventoryItem}
             onAddSection={addSection} onUpdateSection={updateSection} onDeleteSection={deleteSection}
             onMenuOpen={() => setSidebarOpen(true)}
