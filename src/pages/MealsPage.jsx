@@ -264,6 +264,7 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showAddInventory, setShowAddInventory] = useState(false)
+  const [editingIngredients, setEditingIngredients] = useState(false)
   const [newItemName, setNewItemName] = useState('')
   const [newItemSection, setNewItemSection] = useState(sections[0]?.id || '')
   const [newItemPrice, setNewItemPrice] = useState('')
@@ -354,65 +355,14 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
         </div>
       </div>
 
-      {/* Ingredient search */}
+      {/* Ingredients — opens a dedicated full-screen editor, no nested scroll */}
       <div>
-        <label style={s.fieldLabel}>Add ingredients
-          <input style={s.input} value={ingSearch} onChange={e => { setIngSearch(e.target.value); setShowAddInventory(false) }} placeholder="Search inventory…" autoComplete="off" autoCorrect="off" />
-        </label>
-        {filtered.length > 0 && (
-          <div style={s.dropdown}>
-            {filtered.map(item => <button key={item.id} style={s.dropdownItem} onClick={() => addIngredient(item)}>{item.name}</button>)}
-          </div>
-        )}
-        {noResults && !showAddInventory && (
-          <div style={s.dropdown}>
-            <div style={s.noResults}>No match for "{ingSearch.trim()}"</div>
-            <button style={s.dropdownAddBtn} onClick={() => { setNewItemName(ingSearch.trim()); setShowAddInventory(true); setIngSearch('') }}>+ Add "{ingSearch.trim()}" to inventory</button>
-          </div>
-        )}
+        <p style={{ ...s.fieldLabel, marginBottom: 8 }}>Ingredients</p>
+        <button style={s.ingSummaryBtn} onClick={() => setEditingIngredients(true)}>
+          <span>{ingredients.length > 0 ? `${ingredients.length} ingredient${ingredients.length !== 1 ? 's' : ''}` : 'Add ingredients'}</span>
+          <span style={s.ingSummaryChevron}>›</span>
+        </button>
       </div>
-
-      {/* Ingredients already added — own scrollable box so it doesn't pan the whole page */}
-      {ingredients.length > 0 && (
-        <div>
-          <p style={{ ...s.fieldLabel, marginBottom: 8 }}>Ingredients ({ingredients.length})</p>
-          <div style={s.ingEditListScroll}>
-            {ingredients.map((ing, idx) => {
-              const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
-              return (
-                <div key={idx} style={s.ingEditRow}>
-                  <span style={s.ingEditName}>{item?.name || ing.name}</span>
-                  <div style={s.qtyRow}>
-                    <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity - 1)}>−</button>
-                    <span style={s.qtyNum}>{ing.quantity}</span>
-                    <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity + 1)}>+</button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {showAddInventory && (
-        <div style={s.addItemBox}>
-          <p style={s.addItemTitle}>New inventory item</p>
-          <label style={s.fieldLabel}>Name<input autoFocus style={s.input} value={newItemName} onChange={e => setNewItemName(e.target.value)} /></label>
-          <label style={s.fieldLabel}>Aisle
-            <select style={s.input} value={newItemSection} onChange={e => setNewItemSection(e.target.value)}>
-              <option value="">No aisle</option>
-              {sections.map(sec => <option key={sec.id} value={sec.id}>{sec.name}</option>)}
-            </select>
-          </label>
-          <label style={s.fieldLabel}>Estimated price
-            <input style={s.input} type="number" step="0.01" min="0" value={newItemPrice} onChange={e => setNewItemPrice(e.target.value)} placeholder="0.00" />
-          </label>
-          <div style={s.formActions}>
-            <button style={s.cancelBtn} onClick={() => setShowAddInventory(false)}>Cancel</button>
-            <button style={s.confirmBtn} onClick={handleAddNewItem} disabled={addingItem || !newItemName.trim()}>{addingItem ? 'Adding…' : 'Add & use'}</button>
-          </div>
-        </div>
-      )}
 
       {/* Recipe notes */}
       <label style={s.fieldLabel}>
@@ -426,6 +376,68 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
       )}
 
       </div>
+
+      {editingIngredients && (
+        <div style={s.ingEditorScreen}>
+          <div style={s.ingEditorHeader}>
+            <button style={s.formCancelBtn} onClick={() => setEditingIngredients(false)}>‹ Back</button>
+            <p style={s.formDoneTitle}>Ingredients</p>
+            <div style={{ width: 50 }} />
+          </div>
+          <div style={s.ingEditorBody}>
+            <label style={s.fieldLabel}>Add ingredients
+              <input autoFocus style={s.input} value={ingSearch} onChange={e => { setIngSearch(e.target.value); setShowAddInventory(false) }} placeholder="Search inventory…" autoComplete="off" autoCorrect="off" />
+            </label>
+            {filtered.length > 0 && (
+              <div style={s.dropdown}>
+                {filtered.map(item => <button key={item.id} style={s.dropdownItem} onClick={() => addIngredient(item)}>{item.name}</button>)}
+              </div>
+            )}
+            {noResults && !showAddInventory && (
+              <div style={s.dropdown}>
+                <div style={s.noResults}>No match for "{ingSearch.trim()}"</div>
+                <button style={s.dropdownAddBtn} onClick={() => { setNewItemName(ingSearch.trim()); setShowAddInventory(true); setIngSearch('') }}>+ Add "{ingSearch.trim()}" to inventory</button>
+              </div>
+            )}
+            {showAddInventory && (
+              <div style={s.addItemBox}>
+                <p style={s.addItemTitle}>New inventory item</p>
+                <label style={s.fieldLabel}>Name<input autoFocus style={s.input} value={newItemName} onChange={e => setNewItemName(e.target.value)} /></label>
+                <label style={s.fieldLabel}>Aisle
+                  <select style={s.input} value={newItemSection} onChange={e => setNewItemSection(e.target.value)}>
+                    <option value="">No aisle</option>
+                    {sections.map(sec => <option key={sec.id} value={sec.id}>{sec.name}</option>)}
+                  </select>
+                </label>
+                <label style={s.fieldLabel}>Estimated price
+                  <input style={s.input} type="number" step="0.01" min="0" value={newItemPrice} onChange={e => setNewItemPrice(e.target.value)} placeholder="0.00" />
+                </label>
+                <div style={s.formActions}>
+                  <button style={s.cancelBtn} onClick={() => setShowAddInventory(false)}>Cancel</button>
+                  <button style={s.confirmBtn} onClick={handleAddNewItem} disabled={addingItem || !newItemName.trim()}>{addingItem ? 'Adding…' : 'Add & use'}</button>
+                </div>
+              </div>
+            )}
+            {ingredients.length > 0 && (
+              <div style={s.ingEditList}>
+                {ingredients.map((ing, idx) => {
+                  const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
+                  return (
+                    <div key={idx} style={s.ingEditRow}>
+                      <span style={s.ingEditName}>{item?.name || ing.name}</span>
+                      <div style={s.qtyRow}>
+                        <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity - 1)}>−</button>
+                        <span style={s.qtyNum}>{ing.quantity}</span>
+                        <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity + 1)}>+</button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {confirmDelete && (
         <div style={s.overlay} onClick={() => setConfirmDelete(false)}>
@@ -510,7 +522,11 @@ const s = {
   addItemBox: { background: 'var(--cream)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 12, border: '1px solid var(--accent-light)' },
   addItemTitle: { margin: 0, fontWeight: 700, fontSize: 14, color: 'var(--accent)', fontFamily: 'var(--font-display)' },
   ingEditList: { display: 'flex', flexDirection: 'column', gap: 6 },
-  ingEditListScroll: { display: 'flex', flexDirection: 'column', gap: 6, maxHeight: '30vh', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehaviorY: 'contain', touchAction: 'pan-y', border: '1px solid var(--cream-border)', borderRadius: 10, padding: 6 },
+  ingSummaryBtn: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--cream-border)', background: '#fff', fontSize: 15, color: 'var(--charcoal)', cursor: 'pointer', boxSizing: 'border-box' },
+  ingSummaryChevron: { color: 'var(--charcoal-soft)', fontSize: 18 },
+  ingEditorScreen: { position: 'fixed', inset: 0, background: '#fff', zIndex: 40, display: 'flex', flexDirection: 'column' },
+  ingEditorHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '0.5px solid var(--cream-border)', flexShrink: 0 },
+  ingEditorBody: { flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 16, display: 'flex', flexDirection: 'column', gap: 16, boxSizing: 'border-box' },
   ingEditRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--cream)', borderRadius: 8, padding: '8px 12px', flexShrink: 0 },
   ingEditName: { fontSize: 14, color: 'var(--charcoal)', flex: 1 },
   qtyRow: { display: 'flex', alignItems: 'center', gap: 6 },
