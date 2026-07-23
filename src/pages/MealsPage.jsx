@@ -2,6 +2,13 @@ import { useMemo, useState } from 'react'
 import PageHeader from '../components/PageHeader'
 import MemberPicker from '../components/MemberPicker'
 
+// meal_type used to be a single string ('weeknight' | 'sunday'); it's now an
+// array so a meal can be tagged as both. This normalizes either shape.
+function mealTypesOf(meal) {
+  if (!meal?.meal_type) return []
+  return Array.isArray(meal.meal_type) ? meal.meal_type : [meal.meal_type]
+}
+
 export default function MealsPage({
   meals, mealIngredients, mealMembers, inventory, sections, activeList,
   otherMembers, onAddMealToList, onAddMeal, onUpdateMeal, onDeleteMeal,
@@ -47,7 +54,7 @@ export default function MealsPage({
     const q = search.trim().toLowerCase()
     let result = meals.filter(meal => {
       // Type filter
-      if (typeFilter !== 'all' && meal.meal_type !== typeFilter) return false
+      if (typeFilter !== 'all' && !mealTypesOf(meal).includes(typeFilter)) return false
       // Search: meal name OR ingredient names
       if (!q) return true
       if (meal.name.toLowerCase().includes(q)) return true
@@ -137,8 +144,8 @@ export default function MealsPage({
                   sections={sections}
                   otherMembers={otherMembers}
                   onAddInventoryItem={onAddInventoryItem}
-                  onSave={async (name, notes, mealType, ingredients, members) => {
-                    await onUpdateMeal(meal.id, name, notes, mealType, ingredients, members)
+                  onSave={async (name, notes, mealTypes, ingredients, members) => {
+                    await onUpdateMeal(meal.id, name, notes, mealTypes, ingredients, members)
                     setEditingId(null)
                   }}
                   onCancel={() => setEditingId(null)}
@@ -155,11 +162,11 @@ export default function MealsPage({
                 <div style={{ flex: 1 }}>
                   <div style={s.cardTitleRow}>
                     <p style={s.mealName}>{meal.name}</p>
-                    {meal.meal_type && (
-                      <span style={{ ...s.typeBadge, background: meal.meal_type === 'weeknight' ? 'var(--accent-light)' : 'var(--tan-light)', color: meal.meal_type === 'weeknight' ? 'var(--accent)' : 'var(--tan)' }}>
-                        {meal.meal_type === 'weeknight' ? '🌙 Weeknight' : '☀️ Sunday'}
+                    {mealTypesOf(meal).map(t => (
+                      <span key={t} style={{ ...s.typeBadge, background: t === 'weeknight' ? 'var(--accent-light)' : 'var(--tan-light)', color: t === 'weeknight' ? 'var(--accent)' : 'var(--tan)' }}>
+                        {t === 'weeknight' ? '🌙 Weeknight' : '☀️ Sunday'}
                       </span>
-                    )}
+                    ))}
                   </div>
                   {!isExpanded && (
                     <p style={s.mealMeta}>
@@ -233,8 +240,8 @@ export default function MealsPage({
           <MealForm
             inventory={inventory} sections={sections} otherMembers={otherMembers}
             onAddInventoryItem={onAddInventoryItem}
-            onSave={async (name, notes, mealType, ingredients, members) => {
-              await onAddMeal(name, notes, ingredients, members, mealType)
+            onSave={async (name, notes, mealTypes, ingredients, members) => {
+              await onAddMeal(name, notes, ingredients, members, mealTypes)
               setShowNew(false)
             }}
             onCancel={() => setShowNew(false)}
@@ -248,7 +255,7 @@ export default function MealsPage({
 function MealForm({ meal, existingIngredients = [], existingMembers = [], inventory, sections, otherMembers = [], onAddInventoryItem, onSave, onCancel, onDelete }) {
   const [name, setName] = useState(meal?.name || '')
   const [notes, setNotes] = useState(meal?.notes || '')
-  const [mealType, setMealType] = useState(meal?.meal_type || '')
+  const [mealTypes, setMealTypes] = useState(() => mealTypesOf(meal))
   const [ingredients, setIngredients] = useState(() => existingIngredients.map(ing => ({ inventory_item_id: ing.inventory_item_id, name: ing.name, quantity: ing.quantity })))
   const [selectedMembers, setSelectedMembers] = useState(existingMembers)
   const [ingSearch, setIngSearch] = useState('')
@@ -297,10 +304,14 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
     } finally { setAddingItem(false) }
   }
 
+  function toggleMealType(val) {
+    setMealTypes(cur => cur.includes(val) ? cur.filter(t => t !== val) : [...cur, val])
+  }
+
   async function handleSave() {
     if (!name.trim()) return
     setSaving(true)
-    await onSave(name.trim(), notes.trim(), mealType || null, ingredients, selectedMembers)
+    await onSave(name.trim(), notes.trim(), mealTypes, ingredients, selectedMembers)
     setSaving(false)
   }
 
@@ -320,21 +331,43 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
         <input autoFocus style={s.input} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Chicken Stir Fry" />
       </label>
 
-      {/* Meal type toggle */}
+      {/* Meal type toggle — a meal can be both */}
       <div>
         <p style={{ ...s.fieldLabel, marginBottom: 8 }}>Type</p>
         <div style={{ display: 'flex', gap: 8 }}>
-          {[['', 'None'], ['weeknight', '🌙 Weeknight'], ['sunday', '☀️ Sunday']].map(([val, label]) => (
+          {[['weeknight', '🌙 Weeknight'], ['sunday', '☀️ Sunday']].map(([val, label]) => (
             <button
               key={val}
-              style={{ ...s.typePill, background: mealType === val ? 'var(--primary)' : 'var(--cream)', color: mealType === val ? '#fff' : 'var(--charcoal-soft)', border: mealType === val ? 'none' : '1px solid var(--cream-border)', padding: '7px 14px' }}
-              onClick={() => setMealType(val)}
+              style={{ ...s.typePill, background: mealTypes.includes(val) ? 'var(--primary)' : 'var(--cream)', color: mealTypes.includes(val) ? '#fff' : 'var(--charcoal-soft)', border: mealTypes.includes(val) ? 'none' : '1px solid var(--cream-border)', padding: '7px 14px' }}
+              onClick={() => toggleMealType(val)}
             >
               {label}
             </button>
           ))}
         </div>
       </div>
+
+      {/* Ingredients already added — shown first so it never scrolls out of view while you're still searching for more */}
+      {ingredients.length > 0 && (
+        <div>
+          <p style={{ ...s.fieldLabel, marginBottom: 8 }}>Ingredients ({ingredients.length})</p>
+          <div style={s.ingEditList}>
+            {ingredients.map((ing, idx) => {
+              const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
+              return (
+                <div key={idx} style={s.ingEditRow}>
+                  <span style={s.ingEditName}>{item?.name || ing.name}</span>
+                  <div style={s.qtyRow}>
+                    <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity - 1)}>−</button>
+                    <span style={s.qtyNum}>{ing.quantity}</span>
+                    <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity + 1)}>+</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Ingredient search */}
       <div>
@@ -371,24 +404,6 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
             <button style={s.cancelBtn} onClick={() => setShowAddInventory(false)}>Cancel</button>
             <button style={s.confirmBtn} onClick={handleAddNewItem} disabled={addingItem || !newItemName.trim()}>{addingItem ? 'Adding…' : 'Add & use'}</button>
           </div>
-        </div>
-      )}
-
-      {ingredients.length > 0 && (
-        <div style={s.ingEditList}>
-          {ingredients.map((ing, idx) => {
-            const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
-            return (
-              <div key={idx} style={s.ingEditRow}>
-                <span style={s.ingEditName}>{item?.name || ing.name}</span>
-                <div style={s.qtyRow}>
-                  <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity - 1)}>−</button>
-                  <span style={s.qtyNum}>{ing.quantity}</span>
-                  <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity + 1)}>+</button>
-                </div>
-              </div>
-            )
-          })}
         </div>
       )}
 
