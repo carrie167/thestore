@@ -90,6 +90,8 @@ export default function MealsPage({
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search meals or ingredients…"
+          autoComplete="off"
+          autoCorrect="off"
         />
         <div style={s.filterRow}>
           <div style={s.typePills}>
@@ -317,16 +319,18 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      {/* Sticky header with Done button — always visible above keyboard */}
-      <div style={s.formDoneBar}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {/* Sticky header — Cancel/Done row, plus a thin delete line below it. Both stay visible while scrolling. */}
+      <div style={s.formHeaderSticky}>
+        <div style={s.formDoneBar}>
           <button style={s.formCancelBtn} onClick={onCancel}>Cancel</button>
-          {meal && <button style={s.formDeleteIcon} onClick={() => setConfirmDelete(true)} aria-label="Delete meal">🗑</button>}
+          <p style={s.formDoneTitle}>{meal ? 'Edit meal' : 'New meal'}</p>
+          <button style={s.formDoneBtn} onClick={handleSave} disabled={saving || !name.trim()}>
+            {saving ? '…' : 'Done'}
+          </button>
         </div>
-        <p style={s.formDoneTitle}>{meal ? 'Edit meal' : 'New meal'}</p>
-        <button style={s.formDoneBtn} onClick={handleSave} disabled={saving || !name.trim()}>
-          {saving ? '…' : 'Done'}
-        </button>
+        {meal && (
+          <button style={s.formDeleteRow} onClick={() => setConfirmDelete(true)}>🗑 Delete meal</button>
+        )}
       </div>
       <div style={s.formWrap}>
 
@@ -353,7 +357,7 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
       {/* Ingredient search */}
       <div>
         <label style={s.fieldLabel}>Add ingredients
-          <input style={s.input} value={ingSearch} onChange={e => { setIngSearch(e.target.value); setShowAddInventory(false) }} placeholder="Search inventory…" />
+          <input style={s.input} value={ingSearch} onChange={e => { setIngSearch(e.target.value); setShowAddInventory(false) }} placeholder="Search inventory…" autoComplete="off" autoCorrect="off" />
         </label>
         {filtered.length > 0 && (
           <div style={s.dropdown}>
@@ -454,11 +458,11 @@ const s = {
   page: { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, background: 'var(--cream)' },
   newMealBtn: { border: 'none', background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: 20, padding: '6px 14px', fontSize: 13, fontWeight: 600 },
   filterBar: { background: '#fff', padding: '10px 14px', borderBottom: '0.5px solid var(--cream-border)', display: 'flex', flexDirection: 'column', gap: 8 },
-  searchInput: { width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--cream-border)', fontSize: 14, background: 'var(--cream)', boxSizing: 'border-box' },
+  searchInput: { width: '100%', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--cream-border)', fontSize: 16, background: 'var(--cream)', boxSizing: 'border-box' },
   filterRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   typePills: { display: 'flex', gap: 6 },
   typePill: { borderRadius: 20, padding: '5px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
-  sortSelect: { border: '1px solid var(--cream-border)', borderRadius: 8, padding: '6px 8px', fontSize: 12, background: '#fff', color: 'var(--charcoal)', flexShrink: 0 },
+  sortSelect: { border: '1px solid var(--cream-border)', borderRadius: 8, padding: '6px 8px', fontSize: 16, background: '#fff', color: 'var(--charcoal)', flexShrink: 0 },
   scroll: { flex: 1, overflowY: 'auto', padding: '12px 14px 24px', display: 'flex', flexDirection: 'column', gap: 10 },
   empty: { padding: '40px 0', textAlign: 'center' },
   emptyTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, margin: '0 0 8px', color: 'var(--charcoal)' },
@@ -488,16 +492,17 @@ const s = {
   sheetOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 20 },
   sheet: { background: '#fff', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 500, maxHeight: '92vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 40 },
   sheetHandle: { width: 36, height: 4, background: 'var(--cream-border)', borderRadius: 2, margin: '12px auto 16px' },
-  formDoneBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', position: 'sticky', top: 0, background: '#fff', zIndex: 1, borderBottom: '0.5px solid var(--cream-border)' },
+  formHeaderSticky: { position: 'sticky', top: 0, background: '#fff', zIndex: 1 },
+  formDoneBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '0.5px solid var(--cream-border)' },
+  formDeleteRow: { display: 'block', width: '100%', border: 'none', background: '#fff', color: 'var(--danger)', fontSize: 13, padding: '7px 16px', textAlign: 'center', cursor: 'pointer', borderBottom: '0.5px solid var(--cream-border)' },
   formDoneTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, margin: 0, color: 'var(--charcoal)' },
   formDoneBtn: { border: 'none', background: 'var(--primary)', color: '#fff', borderRadius: 8, padding: '7px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   formCancelBtn: { border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 14, padding: '7px 4px', cursor: 'pointer' },
-  formDeleteIcon: { border: 'none', background: 'none', color: 'var(--danger)', fontSize: 16, padding: '7px 4px', cursor: 'pointer', lineHeight: 1 },
   formWrap: { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 },
   formTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, margin: 0, color: 'var(--charcoal)' },
   fieldLabel: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)', margin: 0 },
-  input: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 15, background: '#fff', color: 'var(--charcoal)', boxSizing: 'border-box' },
-  textarea: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 14, background: '#fff', color: 'var(--charcoal)', resize: 'vertical', lineHeight: 1.6, fontFamily: 'var(--font-body)', minHeight: 160, overflowY: 'auto' },
+  input: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 16, background: '#fff', color: 'var(--charcoal)', boxSizing: 'border-box' },
+  textarea: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 16, background: '#fff', color: 'var(--charcoal)', resize: 'vertical', lineHeight: 1.6, fontFamily: 'var(--font-body)', minHeight: 160, overflowY: 'auto' },
   dropdown: { background: '#fff', border: '1px solid var(--cream-border)', borderRadius: 8, marginTop: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', overflow: 'hidden' },
   dropdownItem: { width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: 14, borderBottom: '0.5px solid var(--cream-border)', color: 'var(--charcoal)', cursor: 'pointer' },
   noResults: { padding: '10px 12px', fontSize: 13, color: 'var(--charcoal-soft)', borderBottom: '0.5px solid var(--cream-border)' },
