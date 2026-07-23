@@ -78,7 +78,7 @@ export default function InventoryPage({
       />
       <div style={s.header}>
         <p style={s.addingTo}>Adding to <strong style={{ color: 'var(--charcoal)' }}>{activeList?.name || '—'}</strong></p>
-        <input style={s.search} placeholder="Search items…" value={query} onChange={e => setQuery(e.target.value)} />
+        <input style={s.search} placeholder="Search items…" value={query} onChange={e => setQuery(e.target.value)} autoComplete="off" autoCorrect="off" />
         <div style={s.filterRow}>
           <select style={s.dropdown} value={sectionFilter} onChange={e => setSectionFilter(e.target.value)}>
             <option value="">All aisles</option>
@@ -326,9 +326,9 @@ const s = {
   addBtn: { border: 'none', background: 'var(--sage)', color: '#fff', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600 },
   doneBtn: { border: '1px solid var(--cream-border)', background: '#fff', color: 'var(--charcoal)', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600 },
   addingTo: { fontSize: 13, color: 'var(--charcoal-soft)', margin: '0 0 10px' },
-  search: { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--cream-border)', fontSize: 15, background: 'var(--cream-light)', marginBottom: 8, boxSizing: 'border-box' },
+  search: { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--cream-border)', fontSize: 16, background: 'var(--cream-light)', marginBottom: 8, boxSizing: 'border-box' },
   filterRow: { display: 'flex', gap: 8, alignItems: 'center', paddingBottom: 2 },
-  dropdown: { flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 13, background: '#fff', color: 'var(--charcoal)' },
+  dropdown: { flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 16, background: '#fff', color: 'var(--charcoal)' },
   stapleBtn: { border: 'none', borderRadius: 20, padding: '7px 12px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 },
   clearFilter: { border: '1px solid var(--cream-border)', background: 'none', borderRadius: 20, padding: '7px 12px', fontSize: 12, color: 'var(--charcoal-soft)', whiteSpace: 'nowrap' },
   scroll: { flex: 1, overflowY: 'auto', paddingBottom: 16 },
@@ -356,7 +356,7 @@ const s = {
   sheetHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   sheetTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, margin: 0, color: 'var(--charcoal)' },
   fieldLabel: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
-  input: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 15, background: '#fff', color: 'var(--charcoal)', boxSizing: 'border-box' },
+  input: { padding: '10px 12px', borderRadius: 8, border: '1px solid var(--cream-border)', fontSize: 16, background: '#fff', color: 'var(--charcoal)', boxSizing: 'border-box' },
   priceMeta: { fontSize: 12, color: 'var(--charcoal-soft)', margin: 0 },
   checkLabel: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--charcoal)' },
   deleteBox: { background: 'var(--cream)', borderRadius: 10, padding: 14 },
