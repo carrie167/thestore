@@ -145,8 +145,8 @@ export default function ListPage({
           const isExpanded = expandedIds.has(list.id)
           const total = allItems.reduce((s, i) => s + (i.est_price ? Number(i.est_price) * (i.quantity || 1) : 0), 0)
           const checkedCount = allItems.filter(i => i.is_checked).length
-          const { mealGroups, standalone } = splitByMeal(allItems)
-          const groupedStandalone = groupBySection(standalone)
+          const { mealGroups } = splitByMeal(allItems)
+          const grouped = groupBySection(allItems)
           const showFreetext = showFreetextByList[list.id]
 
           return (
@@ -193,29 +193,30 @@ export default function ListPage({
               {/* Expanded content */}
               {isExpanded && (
                 <div style={{ borderTop: '0.5px solid var(--cream-border)' }}>
-                  {/* Meals contributing to this cart — compact, collapsed, color-coded rows */}
+                  {/* Meals in this cart — thin collapsible banner, just a quick sanity check */}
                   {mealGroups.map((mg, idx) => {
                     const color = MEAL_COLORS[idx % MEAL_COLORS.length]
                     const key = `${list.id}:${mg.id}`
                     const mgExpanded = expandedMealGroups.has(key)
                     return (
                       <div key={mg.id}>
-                        <button style={{ ...s.mealGroupHeader, background: color.bg, color: color.text }} onClick={() => toggleMealGroup(key)}>
-                          <span style={s.mealGroupName}>🍽️ {mg.name}</span>
-                          <span style={s.mealGroupMeta}>
-                            {mg.items.length} item{mg.items.length !== 1 ? 's' : ''}
-                            <span style={s.mealGroupChevron}>{mgExpanded ? '∧' : '∨'}</span>
-                          </span>
+                        <button style={{ ...s.mealBanner, background: color.bg, color: color.text }} onClick={() => toggleMealGroup(key)}>
+                          <span style={s.mealBannerText}>🍽️ {mg.name} · {mg.items.length} item{mg.items.length !== 1 ? 's' : ''}</span>
+                          <span>{mgExpanded ? '∧' : '∨'}</span>
                         </button>
-                        {mgExpanded && mg.items.map(item => (
-                          <ListRow key={item.id} item={item} onToggle={onToggle} onRemove={onRemove} onUpdateQuantity={onUpdateQuantity} />
-                        ))}
+                        {mgExpanded && (
+                          <div style={{ ...s.mealBannerBody, background: color.bg }}>
+                            {mg.items.map(item => (
+                              <span key={item.id} style={s.mealBannerItem}>{item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )
                   })}
 
-                  {/* Standalone items — grouped by aisle, as before */}
-                  {groupedStandalone.map(({ section, items }) => (
+                  {/* All items grouped by aisle — the actual shopping list */}
+                  {grouped.map(({ section, items }) => (
                     <div key={section.id}>
                       <div style={s.aisleHeader}>{section.name}</div>
                       {items.map(item => (
@@ -407,10 +408,10 @@ const s = {
   goldDot: { width: 7, height: 7, borderRadius: '50%', background: 'var(--tan)', flexShrink: 0 },
   setCartBtn: { border: '1.5px solid var(--cream-border)', background: 'none', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, color: 'var(--charcoal-soft)', cursor: 'pointer' },
   editBtn: { border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal-soft)', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer' },
-  mealGroupHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', border: 'none', padding: '11px 14px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, cursor: 'pointer', textAlign: 'left', borderBottom: '0.5px solid rgba(0,0,0,0.06)' },
-  mealGroupName: { flex: 1 },
-  mealGroupMeta: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 500, fontFamily: 'var(--font-body)', opacity: 0.85, flexShrink: 0 },
-  mealGroupChevron: { fontSize: 14, lineHeight: 1 },
+  mealBanner: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', border: 'none', padding: '7px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer', textAlign: 'left', borderBottom: '0.5px solid rgba(0,0,0,0.06)' },
+  mealBannerText: { lineHeight: 1.4 },
+  mealBannerBody: { padding: '2px 14px 9px', display: 'flex', flexWrap: 'wrap', gap: '4px 10px', borderBottom: '0.5px solid rgba(0,0,0,0.06)' },
+  mealBannerItem: { fontSize: 12, opacity: 0.85 },
   aisleHeader: { background: 'var(--aisle-bg)', padding: '5px 14px', fontSize: 10, fontWeight: 600, color: 'var(--aisle-text)', letterSpacing: '0.08em', textTransform: 'uppercase' },
   row: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '0.5px solid var(--cream)' },
   checkbox: { width: 22, height: 22, borderRadius: 6, border: '1.5px solid', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer' },
