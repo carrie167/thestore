@@ -257,6 +257,7 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
   const [showAddInventory, setShowAddInventory] = useState(false)
   const [newItemName, setNewItemName] = useState('')
   const [newItemSection, setNewItemSection] = useState(sections[0]?.id || '')
+  const [newItemPrice, setNewItemPrice] = useState('')
   const [addingItem, setAddingItem] = useState(false)
 
   const inventoryById = useMemo(() => new Map(inventory.map(i => [i.id, i])), [inventory])
@@ -283,9 +284,16 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
     if (!newItemName.trim()) return
     setAddingItem(true)
     try {
-      const item = await onAddInventoryItem({ name: newItemName.trim(), section_id: newItemSection || null, est_price: null, price_updated_at: null, price_is_estimate: true, is_staple: false })
+      const item = await onAddInventoryItem({
+        name: newItemName.trim(),
+        section_id: newItemSection || null,
+        est_price: newItemPrice ? Number(newItemPrice) : null,
+        price_updated_at: newItemPrice ? new Date().toISOString() : null,
+        price_is_estimate: true,
+        is_staple: false,
+      })
       addIngredient(item)
-      setShowAddInventory(false); setNewItemName('')
+      setShowAddInventory(false); setNewItemName(''); setNewItemPrice('')
     } finally { setAddingItem(false) }
   }
 
@@ -355,6 +363,9 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
               <option value="">No aisle</option>
               {sections.map(sec => <option key={sec.id} value={sec.id}>{sec.name}</option>)}
             </select>
+          </label>
+          <label style={s.fieldLabel}>Estimated price
+            <input style={s.input} type="number" step="0.01" min="0" value={newItemPrice} onChange={e => setNewItemPrice(e.target.value)} placeholder="0.00" />
           </label>
           <div style={s.formActions}>
             <button style={s.cancelBtn} onClick={() => setShowAddInventory(false)}>Cancel</button>
