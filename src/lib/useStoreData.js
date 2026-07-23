@@ -204,6 +204,15 @@ export function useStoreData() {
     setListItems(cur => cur.map(i => i.id === data.id ? data : i))
   }
 
+  async function decrementInventoryItemInList(inventoryItem, listId = activeListId) {
+    if (!listId) return
+    const rows = listItems.filter(i => i.list_id === listId && i.inventory_item_id === inventoryItem.id)
+    if (rows.length === 0) return
+    // Prefer decrementing a standalone (non-meal) row first; fall back to a meal-sourced one
+    const target = rows.find(r => !r.source_meal_id) || rows[0]
+    await updateQuantity(target, (target.quantity || 1) - 1)
+  }
+
   async function toggleChecked(listItem) {
     const { data, error } = await supabase.from('list_items').update({ is_checked: !listItem.is_checked }).eq('id', listItem.id).select().single()
     if (error) throw error
@@ -413,7 +422,7 @@ export function useStoreData() {
     householdMembers, myProfile, otherMembers,
     loading, error, reload: loadAll,
     createList, updateList, deleteList,
-    addInventoryItemToList, addFreetextItemToList, addMealToList,
+    addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList,
     updateQuantity, toggleChecked, removeFromList, clearList,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
