@@ -2,6 +2,14 @@ import { useMemo, useState } from 'react'
 import PageHeader from '../components/PageHeader'
 import MemberPicker from '../components/MemberPicker'
 
+// Cycled per meal group in a cart so different meals are visually distinct
+const MEAL_COLORS = [
+  { bg: 'var(--accent-light)', text: 'var(--accent)' },
+  { bg: 'var(--tan-light)', text: 'var(--tan)' },
+  { bg: 'var(--sage)', text: 'var(--sage-dark)' },
+  { bg: 'var(--danger-light)', text: 'var(--danger)' },
+]
+
 export default function ListPage({
   sections, listItems, lists, listMembers, activeListId, activeList,
   onSwitchList, onToggle, onRemove, onClear, onUpdateQuantity,
@@ -9,6 +17,7 @@ export default function ListPage({
   otherMembers, onMenuOpen,
 }) {
   const [expandedIds, setExpandedIds] = useState(new Set([activeListId].filter(Boolean)))
+  const [expandedMealGroups, setExpandedMealGroups] = useState(new Set())
   const [showNewList, setShowNewList] = useState(false)
   const [newListName, setNewListName] = useState('')
   const [newListMembers, setNewListMembers] = useState([])
@@ -50,14 +59,28 @@ export default function ListPage({
       .sort((a, b) => a.section.sort_order - b.section.sort_order)
   }
 
-  function getMealsInList(items) {
-    const meals = new Map()
+  function toggleMealGroup(key) {
+    setExpandedMealGroups(cur => {
+      const next = new Set(cur)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  // Split a list's items into per-meal groups (in first-appearance order) plus standalone items
+  function splitByMeal(items) {
+    const mealMap = new Map()
+    const standalone = []
     for (const item of items) {
-      if (item.source_meal_name && !meals.has(item.source_meal_id)) {
-        meals.set(item.source_meal_id, item.source_meal_name)
+      if (item.source_meal_id) {
+        if (!mealMap.has(item.source_meal_id)) mealMap.set(item.source_meal_id, { id: item.source_meal_id, name: item.source_meal_name, items: [] })
+        mealMap.get(item.source_meal_id).items.push(item)
+      } else {
+        standalone.push(item)
       }
     }
-    return Array.from(meals.values())
+    return { mealGroups: Array.from(mealMap.values()), standalone }
   }
 
   async function handleCreate() {
@@ -122,8 +145,8 @@ export default function ListPage({
           const isExpanded = expandedIds.has(list.id)
           const total = allItems.reduce((s, i) => s + (i.est_price ? Number(i.est_price) * (i.quantity || 1) : 0), 0)
           const checkedCount = allItems.filter(i => i.is_checked).length
-          const grouped = groupBySection(allItems)
-          const mealsInList = getMealsInList(allItems)
+          const { mealGroups, standalone } = splitByMeal(allItems)
+          const groupedStandalone = groupBySection(standalone)
           const showFreetext = showFreetextByList[list.id]
 
           return (
@@ -170,16 +193,29 @@ export default function ListPage({
               {/* Expanded content */}
               {isExpanded && (
                 <div style={{ borderTop: '0.5px solid var(--cream-border)' }}>
-                  {/* Meal summary */}
-                  {mealsInList.length > 0 && (
-                    <div style={s.mealSummary}>
-                      <span>🍽️</span>
-                      <span style={s.mealSummaryText}>{mealsInList.join(' · ')}</span>
-                    </div>
-                  )}
+                  {/* Meals contributing to this cart — compact, collapsed, color-coded rows */}
+                  {mealGroups.map((mg, idx) => {
+                    const color = MEAL_COLORS[idx % MEAL_COLORS.length]
+                    const key = `${list.id}:${mg.id}`
+                    const mgExpanded = expandedMealGroups.has(key)
+                    return (
+                      <div key={mg.id}>
+                        <button style={{ ...s.mealGroupHeader, background: color.bg, color: color.text }} onClick={() => toggleMealGroup(key)}>
+                          <span style={s.mealGroupName}>🍽️ {mg.name}</span>
+                          <span style={s.mealGroupMeta}>
+                            {mg.items.length} item{mg.items.length !== 1 ? 's' : ''}
+                            <span style={s.mealGroupChevron}>{mgExpanded ? '∧' : '∨'}</span>
+                          </span>
+                        </button>
+                        {mgExpanded && mg.items.map(item => (
+                          <ListRow key={item.id} item={item} onToggle={onToggle} onRemove={onRemove} onUpdateQuantity={onUpdateQuantity} />
+                        ))}
+                      </div>
+                    )
+                  })}
 
-                  {/* Items grouped by aisle — flat rows, one per item */}
-                  {grouped.map(({ section, items }) => (
+                  {/* Standalone items — grouped by aisle, as before */}
+                  {groupedStandalone.map(({ section, items }) => (
                     <div key={section.id}>
                       <div style={s.aisleHeader}>{section.name}</div>
                       {items.map(item => (
@@ -323,11 +359,6 @@ function ListRow({ item, onToggle, onRemove, onUpdateQuantity }) {
         {item.name}
       </button>
 
-      {/* Meal source pill */}
-      {item.source_meal_name && (
-        <span style={s.mealPill}>{item.source_meal_name}</span>
-      )}
-
       <div style={s.rowRight}>
         <div style={s.qtyRow}>
           <button style={s.qtyBtn} onClick={() => onUpdateQuantity(item, qty - 1)}>−</button>
@@ -376,13 +407,14 @@ const s = {
   goldDot: { width: 7, height: 7, borderRadius: '50%', background: 'var(--tan)', flexShrink: 0 },
   setCartBtn: { border: '1.5px solid var(--cream-border)', background: 'none', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, color: 'var(--charcoal-soft)', cursor: 'pointer' },
   editBtn: { border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal-soft)', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer' },
-  mealSummary: { background: 'var(--accent-light)', padding: '7px 14px', borderBottom: '0.5px solid var(--cream-border)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--accent)', fontWeight: 500 },
-  mealSummaryText: { flex: 1, lineHeight: 1.4 },
+  mealGroupHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', border: 'none', padding: '11px 14px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, cursor: 'pointer', textAlign: 'left', borderBottom: '0.5px solid rgba(0,0,0,0.06)' },
+  mealGroupName: { flex: 1 },
+  mealGroupMeta: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 500, fontFamily: 'var(--font-body)', opacity: 0.85, flexShrink: 0 },
+  mealGroupChevron: { fontSize: 14, lineHeight: 1 },
   aisleHeader: { background: 'var(--aisle-bg)', padding: '5px 14px', fontSize: 10, fontWeight: 600, color: 'var(--aisle-text)', letterSpacing: '0.08em', textTransform: 'uppercase' },
   row: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '0.5px solid var(--cream)' },
   checkbox: { width: 22, height: 22, borderRadius: 6, border: '1.5px solid', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer' },
   rowLabel: { flex: 1, background: 'none', border: 'none', textAlign: 'left', fontSize: 15, padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer' },
-  mealPill: { fontSize: 10, background: 'var(--accent-light)', color: 'var(--accent)', borderRadius: 10, padding: '2px 7px', whiteSpace: 'nowrap', fontWeight: 500, flexShrink: 0, maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis' },
   rowRight: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 },
   qtyRow: { display: 'flex', alignItems: 'center', gap: 4 },
   qtyBtn: { width: 25, height: 25, borderRadius: 6, border: '1px solid var(--cream-border)', background: 'var(--cream)', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--accent)', cursor: 'pointer' },
