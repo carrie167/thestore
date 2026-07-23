@@ -43,15 +43,43 @@ export default function ListPage({
   }
 
   function groupItems(items) {
-    const map = new Map()
+    // First group by section
+    const sectionMap = new Map()
     for (const item of items) {
       const key = item.section_id || 'none'
-      if (!map.has(key)) map.set(key, [])
-      map.get(key).push(item)
+      if (!sectionMap.has(key)) sectionMap.set(key, [])
+      sectionMap.get(key).push(item)
     }
-    return Array.from(map.entries())
-      .map(([sid, items]) => ({ section: sectionById.get(sid) || { id: 'none', name: 'Other', sort_order: 9999 }, items }))
+
+    // Within each section, group rows by inventory_item_id (or item id for freetext)
+    const sections = Array.from(sectionMap.entries())
+      .map(([sid, sectionItems]) => {
+        // Group by inventory_item_id for display
+        const itemMap = new Map()
+        for (const item of sectionItems) {
+          const key = item.inventory_item_id || item.id
+          if (!itemMap.has(key)) itemMap.set(key, [])
+          itemMap.get(key).push(item)
+        }
+        return {
+          section: sectionById.get(sid) || { id: 'none', name: 'Other', sort_order: 9999 },
+          groups: Array.from(itemMap.values()),
+        }
+      })
       .sort((a, b) => a.section.sort_order - b.section.sort_order)
+
+    return sections
+  }
+
+  // Get unique meals referenced in a list's items
+  function getMealsInList(items) {
+    const meals = new Map()
+    for (const item of items) {
+      if (item.source_meal_name && !meals.has(item.source_meal_id)) {
+        meals.set(item.source_meal_id, item.source_meal_name)
+      }
+    }
+    return Array.from(meals.values())
   }
 
   async function handleCreate() {
@@ -169,15 +197,31 @@ export default function ListPage({
                 </div>
               </div>
 
-              {/* Expanded content */}
               {isExpanded && (
                 <div style={{ borderTop: '0.5px solid var(--cream-border)' }}>
-                  {/* Grouped items */}
-                  {grouped.map(({ section, items }) => (
+                  {/* Meal summary at top of card */}
+                  {(() => {
+                    const mealsInList = getMealsInList(allItems)
+                    return mealsInList.length > 0 ? (
+                      <div style={s.mealSummary}>
+                        <span style={s.mealSummaryIcon}>🍽️</span>
+                        <span style={s.mealSummaryText}>{mealsInList.join(' · ')}</span>
+                      </div>
+                    ) : null
+                  })()}
+
+                  {/* Grouped items by section */}
+                  {groupItems(allItems).map(({ section, groups }) => (
                     <div key={section.id}>
                       <div style={s.aisleHeader}>{section.name}</div>
-                      {items.map(item => (
-                        <ListRow key={item.id} item={item} onToggle={onToggle} onRemove={onRemove} onUpdateQuantity={onUpdateQuantity} />
+                      {groups.map(groupRows => (
+                        <ListRowGroup
+                          key={groupRows[0].inventory_item_id || groupRows[0].id}
+                          rows={groupRows}
+                          onToggle={onToggle}
+                          onRemove={onRemove}
+                          onUpdateQuantity={onUpdateQuantity}
+                        />
                       ))}
                     </div>
                   ))}
@@ -301,37 +345,69 @@ export default function ListPage({
   )
 }
 
-function ListRow({ item, onToggle, onRemove, onUpdateQuantity }) {
-  const qty = item.quantity || 1
-  const lineTotal = item.est_price ? Number(item.est_price) * qty : null
+function ListRowGroup({ rows, onToggle, onRemove, onUpdateQuantity }) {
+  const firstName = rows[0].name
+  const totalQty = rows.reduce((s, r) => s + (r.quantity || 1), 0)
+  const totalPrice = rows.reduce((s, r) => s + (r.est_price ? Number(r.est_price) * (r.quantity || 1) : 0), 0)
+  const allChecked = rows.every(r => r.is_checked)
+  const someChecked = rows.some(r => r.is_checked)
+  const mealRows = rows.filter(r => r.source_meal_name)
+  const manualRows = rows.filter(r => !r.source_meal_name)
+  const hasMultiple = rows.length > 1
+
   return (
-    <div style={{ ...s.row, background: item.is_checked ? 'var(--cream-light)' : '#fff' }}>
-      <button
-        style={{ ...s.checkbox, background: item.is_checked ? 'var(--sage)' : 'transparent', borderColor: item.is_checked ? 'var(--sage)' : 'var(--primary-light)' }}
-        onClick={() => onToggle(item)}
-      >
-        {item.is_checked && <span style={{ color: '#fff', fontSize: 12 }}>✓</span>}
-      </button>
-      <button
-        style={{ ...s.rowLabel, color: item.is_checked ? 'var(--charcoal-soft)' : 'var(--charcoal)', textDecoration: item.is_checked ? 'line-through' : 'none' }}
-        onClick={() => onToggle(item)}
-      >
-        {item.name}
-      </button>
-      <div style={s.rowRight}>
-        <div style={s.qtyRow}>
-          <button style={s.qtyBtn} onClick={() => onUpdateQuantity(item, qty - 1)}>−</button>
-          <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', minWidth: 14, textAlign: 'center', color: item.is_checked ? 'var(--charcoal-soft)' : 'var(--charcoal)' }}>{qty}</span>
-          <button style={s.qtyBtn} onClick={() => onUpdateQuantity(item, qty + 1)}>+</button>
+    <div style={{ borderBottom: '0.5px solid var(--cream)', background: allChecked ? 'var(--cream-light)' : '#fff' }}>
+      <div style={s.groupRow}>
+        <button
+          style={{ ...s.checkbox, background: allChecked ? 'var(--sage)' : someChecked ? 'var(--primary-light)' : 'transparent', borderColor: allChecked ? 'var(--sage)' : 'var(--primary-light)' }}
+          onClick={() => rows.forEach(r => { if (r.is_checked !== !allChecked) onToggle(r) })}
+        >
+          {allChecked && <span style={{ color: '#fff', fontSize: 12 }}>✓</span>}
+          {someChecked && !allChecked && <span style={{ color: 'var(--primary-dark)', fontSize: 10 }}>–</span>}
+        </button>
+        <span style={{ flex: 1, fontSize: 15, color: allChecked ? 'var(--charcoal-soft)' : 'var(--charcoal)', textDecoration: allChecked ? 'line-through' : 'none', fontFamily: 'var(--font-body)' }}>
+          {firstName}
+        </span>
+        <div style={s.rowRight}>
+          <div style={s.qtyRow}>
+            {!hasMultiple ? (
+              <>
+                <button style={s.qtyBtn} onClick={() => onUpdateQuantity(rows[0], (rows[0].quantity || 1) - 1)}>−</button>
+                <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', minWidth: 14, textAlign: 'center', color: allChecked ? 'var(--charcoal-soft)' : 'var(--charcoal)' }}>{rows[0].quantity || 1}</span>
+                <button style={s.qtyBtn} onClick={() => onUpdateQuantity(rows[0], (rows[0].quantity || 1) + 1)}>+</button>
+              </>
+            ) : (
+              <span style={{ fontSize: 14, fontFamily: 'var(--font-mono)', fontWeight: 700, color: allChecked ? 'var(--charcoal-soft)' : 'var(--charcoal)', minWidth: 20, textAlign: 'center' }}>{totalQty}</span>
+            )}
+          </div>
+          {totalPrice > 0 && (
+            <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: allChecked ? 'var(--charcoal-soft)' : 'var(--tan)', textDecoration: allChecked ? 'line-through' : 'none' }}>
+              ${totalPrice.toFixed(2)}
+            </span>
+          )}
         </div>
-        {lineTotal != null && (
-          <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: item.is_checked ? 'var(--charcoal-soft)' : 'var(--tan)', textDecoration: item.is_checked ? 'line-through' : 'none' }}>
-            ${lineTotal.toFixed(2)}
-            {qty > 1 && <span style={{ fontSize: 10, opacity: 0.7 }}> (${Number(item.est_price).toFixed(2)})</span>}
-          </span>
+        {!hasMultiple && (
+          <button style={s.removeBtn} onClick={() => onRemove(rows[0].id)}>×</button>
         )}
       </div>
-      <button style={s.removeBtn} onClick={() => onRemove(item.id)}>×</button>
+      {hasMultiple && (
+        <div style={s.sourceRows}>
+          {mealRows.map(row => (
+            <div key={row.id} style={s.sourceRow}>
+              <span style={s.sourceQty}>{row.quantity || 1}</span>
+              <span style={s.sourceMeal}>{row.source_meal_name}</span>
+              <button style={s.sourceRemove} onClick={() => onRemove(row.id)}>×</button>
+            </div>
+          ))}
+          {manualRows.map(row => (
+            <div key={row.id} style={s.sourceRow}>
+              <span style={s.sourceQty}>{row.quantity || 1}</span>
+              <span style={{ ...s.sourceMeal, color: 'var(--cream-border)', fontStyle: 'italic' }}>added manually</span>
+              <button style={s.sourceRemove} onClick={() => onRemove(row.id)}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -367,6 +443,15 @@ const s = {
   setCartBtn: { border: '1.5px solid var(--cream-border)', background: 'none', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, color: 'var(--charcoal-soft)', cursor: 'pointer' },
   editBtn: { border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal-soft)', borderRadius: 8, padding: '5px 12px', fontSize: 12, cursor: 'pointer' },
   aisleHeader: { background: 'var(--aisle-bg)', padding: '5px 14px', fontSize: 10, fontWeight: 600, color: 'var(--aisle-text)', letterSpacing: '0.08em', textTransform: 'uppercase' },
+  mealSummary: { padding: '8px 14px', background: 'var(--accent-light)', borderBottom: '0.5px solid var(--cream-border)', display: 'flex', alignItems: 'center', gap: 8 },
+  mealSummaryIcon: { fontSize: 13, flexShrink: 0 },
+  mealSummaryText: { fontSize: 12, color: 'var(--accent)', fontWeight: 500, lineHeight: 1.4 },
+  groupRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px' },
+  sourceRows: { paddingLeft: 46, paddingRight: 14, paddingBottom: 8, display: 'flex', flexDirection: 'column', gap: 3 },
+  sourceRow: { display: 'flex', alignItems: 'center', gap: 8 },
+  sourceQty: { fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--charcoal-soft)', minWidth: 16, textAlign: 'right' },
+  sourceMeal: { flex: 1, fontSize: 11, color: 'var(--charcoal-soft)', fontStyle: 'italic' },
+  sourceRemove: { border: 'none', background: 'none', color: 'var(--cream-border)', fontSize: 14, padding: '0 2px', cursor: 'pointer', lineHeight: 1 },
   row: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '0.5px solid var(--cream)' },
   checkbox: { width: 22, height: 22, borderRadius: 6, border: '1.5px solid', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer' },
   rowLabel: { flex: 1, background: 'none', border: 'none', textAlign: 'left', fontSize: 15, padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer' },
