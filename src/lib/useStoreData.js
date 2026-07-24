@@ -234,6 +234,14 @@ export function useStoreData() {
     setListItems(cur => cur.filter(i => !ids.includes(i.id)))
   }
 
+  async function removeMealFromList(listId, mealId) {
+    const ids = listItems.filter(i => i.list_id === listId && i.source_meal_id === mealId).map(i => i.id)
+    if (!ids.length) return
+    const { error } = await supabase.from('list_items').delete().in('id', ids)
+    if (error) throw error
+    setListItems(cur => cur.filter(i => !ids.includes(i.id)))
+  }
+
   // ── Inventory mutations ──
   async function addInventoryItem(item) {
     const household_id = await getHouseholdId()
@@ -424,7 +432,7 @@ export function useStoreData() {
     loading, error, reload: loadAll,
     createList, updateList, deleteList,
     addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList,
-    updateQuantity, toggleChecked, removeFromList, clearList,
+    updateQuantity, toggleChecked, removeFromList, clearList, removeMealFromList,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
     addMeal, updateMeal, deleteMeal,
