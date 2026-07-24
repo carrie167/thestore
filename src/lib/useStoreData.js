@@ -191,6 +191,7 @@ export function useStoreData() {
         added_by: user.id,
         source_meal_id: meal.id,
         source_meal_name: meal.name,
+        tag: ing.tag || null,
       }).select().single()
       if (error) throw error
       setListItems(cur => [...cur, data])
