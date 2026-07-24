@@ -504,7 +504,7 @@ const s = {
   empty: { padding: '40px 0', textAlign: 'center' },
   emptyTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, margin: '0 0 8px', color: 'var(--charcoal)' },
   emptyBody: { fontSize: 14, color: 'var(--charcoal-soft)', margin: 0, lineHeight: 1.6 },
-  card: { background: '#fff', borderRadius: 12, border: '1px solid var(--cream-border)', overflow: 'hidden', position: 'relative' },
+  card: { background: '#fff', borderRadius: 12, border: '1px solid var(--cream-border)', position: 'relative' },
   cardHeader: { width: '100%', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '13px 14px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' },
   quickEditBtn: { position: 'absolute', top: '50%', right: 40, transform: 'translateY(-50%)', border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 15, padding: 8, cursor: 'pointer', zIndex: 1 },
   cardTitleRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
