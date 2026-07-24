@@ -160,32 +160,32 @@ export default function MealsPage({
           return (
             <div key={meal.id} style={s.card}>
               {/* Collapsed header */}
-              <div style={s.cardHeader}>
-                <button style={s.cardHeaderMain} onClick={() => setExpandedId(isExpanded ? null : meal.id)}>
-                  <div style={{ flex: 1 }}>
-                    <div style={s.cardTitleRow}>
-                      <p style={s.mealName}>{meal.name}</p>
-                      {mealTypesOf(meal).map(t => (
-                        <span key={t} style={{ ...s.typeBadge, background: t === 'weeknight' ? 'var(--accent-light)' : 'var(--tan-light)', color: t === 'weeknight' ? 'var(--accent)' : 'var(--tan)' }}>
-                          {t === 'weeknight' ? '🌙 Weeknight' : '☀️ Sunday'}
-                        </span>
-                      ))}
-                    </div>
-                    {!isExpanded && (
-                      <p style={s.mealMeta}>
-                        {ings.length} ingredient{ings.length !== 1 ? 's' : ''}
-                        {cost > 0 ? ` · $${cost.toFixed(2)}` : ''}
-                        {sharedWith.length > 0 ? ' · Shared' : ''}
-                      </p>
-                    )}
+              <button style={s.cardHeader} onClick={() => setExpandedId(isExpanded ? null : meal.id)}>
+                <div style={{ flex: 1 }}>
+                  <div style={s.cardTitleRow}>
+                    <p style={s.mealName}>{meal.name}</p>
+                    {mealTypesOf(meal).map(t => (
+                      <span key={t} style={{ ...s.typeBadge, background: t === 'weeknight' ? 'var(--accent-light)' : 'var(--tan-light)', color: t === 'weeknight' ? 'var(--accent)' : 'var(--tan)' }}>
+                        {t === 'weeknight' ? '🌙 Weeknight' : '☀️ Sunday'}
+                      </span>
+                    ))}
                   </div>
-                  <div style={s.cardHeaderRight}>
-                    {isExpanded && cost > 0 && <span style={s.mealCost}>${cost.toFixed(2)}</span>}
-                    <span style={s.chevron}>{isExpanded ? '∧' : '∨'}</span>
-                  </div>
-                </button>
+                  {!isExpanded && (
+                    <p style={s.mealMeta}>
+                      {ings.length} ingredient{ings.length !== 1 ? 's' : ''}
+                      {cost > 0 ? ` · $${cost.toFixed(2)}` : ''}
+                      {sharedWith.length > 0 ? ' · Shared' : ''}
+                    </p>
+                  )}
+                </div>
+                <div style={s.cardHeaderRight}>
+                  {isExpanded && cost > 0 && <span style={s.mealCost}>${cost.toFixed(2)}</span>}
+                  <span style={s.chevron}>{isExpanded ? '∧' : '∨'}</span>
+                </div>
+              </button>
+              {!isExpanded && (
                 <button style={s.quickEditBtn} onClick={() => setEditingId(meal.id)} aria-label="Edit meal">✎</button>
-              </div>
+              )}
 
               {isExpanded && (
                 <>
@@ -504,10 +504,9 @@ const s = {
   empty: { padding: '40px 0', textAlign: 'center' },
   emptyTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, margin: '0 0 8px', color: 'var(--charcoal)' },
   emptyBody: { fontSize: 14, color: 'var(--charcoal-soft)', margin: 0, lineHeight: 1.6 },
-  card: { background: '#fff', borderRadius: 12, border: '1px solid var(--cream-border)', overflow: 'hidden' },
-  cardHeader: { display: 'flex', alignItems: 'center' },
-  cardHeaderMain: { flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '13px 14px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' },
-  quickEditBtn: { flexShrink: 0, border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 15, padding: '13px 14px 13px 4px', cursor: 'pointer' },
+  card: { background: '#fff', borderRadius: 12, border: '1px solid var(--cream-border)', overflow: 'hidden', position: 'relative' },
+  cardHeader: { width: '100%', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '13px 14px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' },
+  quickEditBtn: { position: 'absolute', top: '50%', right: 40, transform: 'translateY(-50%)', border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 15, padding: 8, cursor: 'pointer', zIndex: 1 },
   cardTitleRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   mealName: { margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--charcoal)', fontFamily: 'var(--font-display)' },
   typeBadge: { fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap' },
