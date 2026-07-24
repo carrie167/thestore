@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import PageHeader from '../components/PageHeader'
 import MemberPicker from '../components/MemberPicker'
 
@@ -283,6 +283,12 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
     return inventory.filter(i => i.name.toLowerCase().includes(q)).slice(0, 8)
   }, [ingSearch, inventory])
   const noResults = ingSearch.trim().length > 1 && filtered.length === 0
+  const searchResultsRef = useRef(null)
+  useEffect(() => {
+    if ((filtered.length > 0 || noResults) && searchResultsRef.current) {
+      searchResultsRef.current.scrollIntoView({ block: 'nearest' })
+    }
+  }, [filtered.length, noResults])
 
   function addIngredient(item) {
     const exists = ingredients.find(i => i.inventory_item_id === item.id)
@@ -399,12 +405,12 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
               <input autoFocus style={s.input} value={ingSearch} onChange={e => { setIngSearch(e.target.value); setShowAddInventory(false) }} placeholder="Search inventory…" autoComplete="off" autoCorrect="off" />
             </label>
             {filtered.length > 0 && (
-              <div style={s.dropdown}>
+              <div ref={searchResultsRef} style={s.dropdown}>
                 {filtered.map(item => <button key={item.id} style={s.dropdownItem} onClick={() => addIngredient(item)}>{item.name}</button>)}
               </div>
             )}
             {noResults && !showAddInventory && (
-              <div style={s.dropdown}>
+              <div ref={searchResultsRef} style={s.dropdown}>
                 <div style={s.noResults}>No match for "{ingSearch.trim()}"</div>
                 <button style={s.dropdownAddBtn} onClick={() => { setNewItemName(ingSearch.trim()); setShowAddInventory(true); setIngSearch('') }}>+ Add "{ingSearch.trim()}" to inventory</button>
               </div>
