@@ -207,7 +207,9 @@ export default function ListPage({
                         {mgExpanded && (
                           <div style={{ ...s.mealBannerBody, background: color.bg }}>
                             {mg.items.map(item => (
-                              <span key={item.id} style={s.mealBannerItem}>{item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}</span>
+                              <span key={item.id} style={{ ...s.mealBannerItem, fontStyle: item.tag ? 'italic' : 'normal' }}>
+                                {item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}{item.tag ? ` (${item.tag === 'optional' ? 'opt' : 'side'})` : ''}
+                              </span>
                             ))}
                           </div>
                         )}
@@ -354,10 +356,11 @@ function ListRow({ item, onToggle, onRemove, onUpdateQuantity }) {
       </button>
 
       <button
-        style={{ ...s.rowLabel, color: item.is_checked ? 'var(--charcoal-soft)' : 'var(--charcoal)', textDecoration: item.is_checked ? 'line-through' : 'none' }}
+        style={{ ...s.rowLabel, color: item.is_checked ? 'var(--charcoal-soft)' : 'var(--charcoal)', textDecoration: item.is_checked ? 'line-through' : 'none', fontStyle: item.tag ? 'italic' : 'normal' }}
         onClick={() => onToggle(item)}
       >
         {item.name}
+        {item.tag && <span style={s.optTag}> ({item.tag === 'optional' ? 'opt' : 'side'})</span>}
       </button>
 
       <div style={s.rowRight}>
@@ -416,6 +419,7 @@ const s = {
   row: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '0.5px solid var(--cream)' },
   checkbox: { width: 22, height: 22, borderRadius: 6, border: '1.5px solid', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer' },
   rowLabel: { flex: 1, background: 'none', border: 'none', textAlign: 'left', fontSize: 15, padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer' },
+  optTag: { fontSize: 12, fontStyle: 'normal', color: 'var(--charcoal-soft)' },
   rowRight: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 },
   qtyRow: { display: 'flex', alignItems: 'center', gap: 4 },
   qtyBtn: { width: 25, height: 25, borderRadius: 6, border: '1px solid var(--cream-border)', background: 'var(--cream)', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--accent)', cursor: 'pointer' },
