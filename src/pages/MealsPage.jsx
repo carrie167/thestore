@@ -160,29 +160,32 @@ export default function MealsPage({
           return (
             <div key={meal.id} style={s.card}>
               {/* Collapsed header */}
-              <button style={s.cardHeader} onClick={() => setExpandedId(isExpanded ? null : meal.id)}>
-                <div style={{ flex: 1 }}>
-                  <div style={s.cardTitleRow}>
-                    <p style={s.mealName}>{meal.name}</p>
-                    {mealTypesOf(meal).map(t => (
-                      <span key={t} style={{ ...s.typeBadge, background: t === 'weeknight' ? 'var(--accent-light)' : 'var(--tan-light)', color: t === 'weeknight' ? 'var(--accent)' : 'var(--tan)' }}>
-                        {t === 'weeknight' ? '🌙 Weeknight' : '☀️ Sunday'}
-                      </span>
-                    ))}
+              <div style={s.cardHeader}>
+                <button style={s.cardHeaderMain} onClick={() => setExpandedId(isExpanded ? null : meal.id)}>
+                  <div style={{ flex: 1 }}>
+                    <div style={s.cardTitleRow}>
+                      <p style={s.mealName}>{meal.name}</p>
+                      {mealTypesOf(meal).map(t => (
+                        <span key={t} style={{ ...s.typeBadge, background: t === 'weeknight' ? 'var(--accent-light)' : 'var(--tan-light)', color: t === 'weeknight' ? 'var(--accent)' : 'var(--tan)' }}>
+                          {t === 'weeknight' ? '🌙 Weeknight' : '☀️ Sunday'}
+                        </span>
+                      ))}
+                    </div>
+                    {!isExpanded && (
+                      <p style={s.mealMeta}>
+                        {ings.length} ingredient{ings.length !== 1 ? 's' : ''}
+                        {cost > 0 ? ` · $${cost.toFixed(2)}` : ''}
+                        {sharedWith.length > 0 ? ' · Shared' : ''}
+                      </p>
+                    )}
                   </div>
-                  {!isExpanded && (
-                    <p style={s.mealMeta}>
-                      {ings.length} ingredient{ings.length !== 1 ? 's' : ''}
-                      {cost > 0 ? ` · $${cost.toFixed(2)}` : ''}
-                      {sharedWith.length > 0 ? ' · Shared' : ''}
-                    </p>
-                  )}
-                </div>
-                <div style={s.cardHeaderRight}>
-                  {isExpanded && cost > 0 && <span style={s.mealCost}>${cost.toFixed(2)}</span>}
-                  <span style={s.chevron}>{isExpanded ? '∧' : '∨'}</span>
-                </div>
-              </button>
+                  <div style={s.cardHeaderRight}>
+                    {isExpanded && cost > 0 && <span style={s.mealCost}>${cost.toFixed(2)}</span>}
+                    <span style={s.chevron}>{isExpanded ? '∧' : '∨'}</span>
+                  </div>
+                </button>
+                <button style={s.quickEditBtn} onClick={() => setEditingId(meal.id)} aria-label="Edit meal">✎</button>
+              </div>
 
               {isExpanded && (
                 <>
@@ -193,9 +196,10 @@ export default function MealsPage({
                       const price = item?.est_price ? Number(item.est_price) * ing.quantity : null
                       return (
                         <div key={ing.id} style={s.ingRow}>
-                          <span style={s.ingName}>
+                          <span style={{ ...s.ingName, ...(ing.tag ? { fontStyle: 'italic' } : {}) }}>
                             {ing.quantity > 1 && <span style={s.ingQty}>{ing.quantity}× </span>}
                             {item?.name || ing.name}
+                            {ing.tag && <span style={s.optTag}> ({ing.tag === 'optional' ? 'opt' : 'side'})</span>}
                           </span>
                           {price != null && <span style={s.ingPrice}>${price.toFixed(2)}</span>}
                         </div>
@@ -258,7 +262,7 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
   const [name, setName] = useState(meal?.name || '')
   const [notes, setNotes] = useState(meal?.notes || '')
   const [mealTypes, setMealTypes] = useState(() => mealTypesOf(meal))
-  const [ingredients, setIngredients] = useState(() => existingIngredients.map(ing => ({ inventory_item_id: ing.inventory_item_id, name: ing.name, quantity: ing.quantity })))
+  const [ingredients, setIngredients] = useState(() => existingIngredients.map(ing => ({ inventory_item_id: ing.inventory_item_id, name: ing.name, quantity: ing.quantity, tag: ing.tag || null })))
   const [selectedMembers, setSelectedMembers] = useState(existingMembers)
   const [ingSearch, setIngSearch] = useState('')
   const [saving, setSaving] = useState(false)
@@ -281,13 +285,17 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
   function addIngredient(item) {
     const exists = ingredients.find(i => i.inventory_item_id === item.id)
     if (exists) setIngredients(cur => cur.map(i => i.inventory_item_id === item.id ? { ...i, quantity: i.quantity + 1 } : i))
-    else setIngredients(cur => [...cur, { inventory_item_id: item.id, name: item.name, quantity: 1 }])
+    else setIngredients(cur => [...cur, { inventory_item_id: item.id, name: item.name, quantity: 1, tag: null }])
     setIngSearch('')
   }
 
   function updateIngQty(idx, qty) {
     if (qty < 1) setIngredients(cur => cur.filter((_, i) => i !== idx))
     else setIngredients(cur => cur.map((ing, i) => i === idx ? { ...ing, quantity: qty } : ing))
+  }
+
+  function setIngTag(idx, tag) {
+    setIngredients(cur => cur.map((ing, i) => i === idx ? { ...ing, tag: ing.tag === tag ? null : tag } : ing))
   }
 
   async function handleAddNewItem() {
@@ -424,7 +432,19 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
                   const item = ing.inventory_item_id ? inventoryById.get(ing.inventory_item_id) : null
                   return (
                     <div key={idx} style={s.ingEditRow}>
-                      <span style={s.ingEditName}>{item?.name || ing.name}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ ...s.ingEditName, ...(ing.tag ? { fontStyle: 'italic', color: 'var(--charcoal-soft)' } : {}) }}>
+                          {item?.name || ing.name}
+                        </div>
+                        <div style={s.tagRow}>
+                          <button style={s.tagOption} onClick={() => setIngTag(idx, 'optional')}>
+                            <span style={s.tagRadio}>{ing.tag === 'optional' ? '●' : '○'}</span> Optional
+                          </button>
+                          <button style={s.tagOption} onClick={() => setIngTag(idx, 'side')}>
+                            <span style={s.tagRadio}>{ing.tag === 'side' ? '●' : '○'}</span> Side
+                          </button>
+                        </div>
+                      </div>
                       <div style={s.qtyRow}>
                         <button style={s.qtyBtn} onClick={() => updateIngQty(idx, ing.quantity - 1)}>−</button>
                         <span style={s.qtyNum}>{ing.quantity}</span>
@@ -480,7 +500,9 @@ const s = {
   emptyTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, margin: '0 0 8px', color: 'var(--charcoal)' },
   emptyBody: { fontSize: 14, color: 'var(--charcoal-soft)', margin: 0, lineHeight: 1.6 },
   card: { background: '#fff', borderRadius: 12, border: '1px solid var(--cream-border)', overflow: 'hidden' },
-  cardHeader: { width: '100%', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '13px 14px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' },
+  cardHeader: { display: 'flex', alignItems: 'center' },
+  cardHeaderMain: { flex: 1, minWidth: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '13px 14px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' },
+  quickEditBtn: { flexShrink: 0, border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 15, padding: '13px 14px 13px 4px', cursor: 'pointer' },
   cardTitleRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   mealName: { margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--charcoal)', fontFamily: 'var(--font-display)' },
   typeBadge: { fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap' },
@@ -493,6 +515,7 @@ const s = {
   ingName: { fontSize: 13, color: 'var(--charcoal)' },
   ingQty: { fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--charcoal-soft)' },
   ingPrice: { fontSize: 12, color: 'var(--tan)', fontFamily: 'var(--font-mono)' },
+  optTag: { fontSize: 11, color: 'var(--charcoal-soft)' },
   notesSection: { borderTop: '0.5px solid var(--cream-border)', background: '#fff' },
   notesToggle: { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' },
   notesLabel: { fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
@@ -528,7 +551,10 @@ const s = {
   ingEditorHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '0.5px solid var(--cream-border)', flexShrink: 0 },
   ingEditorBody: { flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 16, display: 'flex', flexDirection: 'column', gap: 16, boxSizing: 'border-box' },
   ingEditRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--cream)', borderRadius: 8, padding: '8px 12px', flexShrink: 0 },
-  ingEditName: { fontSize: 14, color: 'var(--charcoal)', flex: 1 },
+  ingEditName: { fontSize: 14, color: 'var(--charcoal)' },
+  tagRow: { display: 'flex', gap: 14, marginTop: 3 },
+  tagOption: { display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', padding: 0, fontSize: 12, color: 'var(--charcoal-soft)', cursor: 'pointer' },
+  tagRadio: { fontSize: 13, color: 'var(--sage-dark)' },
   qtyRow: { display: 'flex', alignItems: 'center', gap: 6 },
   qtyBtn: { width: 26, height: 26, borderRadius: 6, border: '1px solid var(--cream-border)', background: '#fff', fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--accent)', cursor: 'pointer' },
   qtyNum: { fontSize: 14, fontFamily: 'var(--font-mono)', minWidth: 16, textAlign: 'center', color: 'var(--charcoal)' },
