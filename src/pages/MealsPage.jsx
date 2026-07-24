@@ -208,20 +208,25 @@ export default function MealsPage({
                     {ings.length === 0 && <p style={{ fontSize: 13, color: 'var(--charcoal-soft)', margin: '8px 0', fontStyle: 'italic' }}>No ingredients yet</p>}
                   </div>
 
-                  {/* Recipe notes — collapsible, below ingredients */}
-                  {meal.notes && (
-                    <div style={s.notesSection}>
-                      <button style={s.notesToggle} onClick={() => setNotesExpandedId(notesExpanded ? null : meal.id)}>
-                        <span style={s.notesLabel}>📋 Recipe notes</span>
-                        <span style={{ fontSize: 14, color: 'var(--charcoal-soft)' }}>{notesExpanded ? '∧' : '∨'}</span>
-                      </button>
-                      {notesExpanded && (
+                  {/* Recipe notes — collapsible, below ingredients. Always shown so notes can be discovered/added even if empty. */}
+                  <div style={s.notesSection}>
+                    <button style={s.notesToggle} onClick={() => setNotesExpandedId(notesExpanded ? null : meal.id)}>
+                      <span style={s.notesLabel}>📋 Recipe notes</span>
+                      <span style={{ fontSize: 14, color: 'var(--charcoal-soft)' }}>{notesExpanded ? '∧' : '∨'}</span>
+                    </button>
+                    {notesExpanded && (
+                      meal.notes ? (
                         <div style={s.notesScrollBox}>
                           <p style={s.notesText}>{meal.notes}</p>
                         </div>
-                      )}
-                    </div>
-                  )}
+                      ) : (
+                        <div style={s.notesScrollBox}>
+                          <p style={{ ...s.notesText, fontStyle: 'italic' }}>No notes yet.</p>
+                          <button style={s.addNotesLink} onClick={() => setEditingId(meal.id)}>+ Add recipe notes</button>
+                        </div>
+                      )
+                    )}
+                  </div>
 
                   {/* Card actions */}
                   <div style={s.cardActions}>
@@ -521,6 +526,7 @@ const s = {
   notesLabel: { fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
   notesScrollBox: { maxHeight: '42vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', borderTop: '0.5px solid var(--cream-border)', background: 'var(--cream)' },
   notesText: { margin: 0, fontSize: 14, color: 'var(--charcoal-soft)', lineHeight: 1.7, whiteSpace: 'pre-wrap', padding: '12px 14px 14px' },
+  addNotesLink: { border: 'none', background: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 600, padding: '0 14px 14px', cursor: 'pointer' },
   cardActions: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderTop: '0.5px solid var(--cream-border)' },
   editBtn: { border: '1px solid var(--cream-border)', background: '#fff', color: 'var(--charcoal-soft)', padding: '6px 12px', borderRadius: 8, fontSize: 12, cursor: 'pointer' },
   addToListBtn: { border: 'none', background: 'var(--primary)', color: '#fff', padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' },
