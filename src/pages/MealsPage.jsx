@@ -150,6 +150,9 @@ export default function MealsPage({
                     await onUpdateMeal(meal.id, name, notes, mealTypes, ingredients, members)
                     setEditingId(null)
                   }}
+                  onAutosave={async (name, notes, mealTypes, ingredients, members) => {
+                    await onUpdateMeal(meal.id, name, notes, mealTypes, ingredients, members)
+                  }}
                   onCancel={() => setEditingId(null)}
                   onDelete={async () => { await onDeleteMeal(meal.id); setEditingId(null) }}
                 />
@@ -260,7 +263,7 @@ export default function MealsPage({
   )
 }
 
-function MealForm({ meal, existingIngredients = [], existingMembers = [], inventory, sections, otherMembers = [], onAddInventoryItem, onSave, onCancel, onDelete }) {
+function MealForm({ meal, existingIngredients = [], existingMembers = [], inventory, sections, otherMembers = [], onAddInventoryItem, onSave, onAutosave, onCancel, onDelete }) {
   const [name, setName] = useState(meal?.name || '')
   const [notes, setNotes] = useState(meal?.notes || '')
   const [mealTypes, setMealTypes] = useState(() => mealTypesOf(meal))
@@ -283,12 +286,6 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
     return inventory.filter(i => i.name.toLowerCase().includes(q)).slice(0, 8)
   }, [ingSearch, inventory])
   const noResults = ingSearch.trim().length > 1 && filtered.length === 0
-  const searchResultsRef = useRef(null)
-  useEffect(() => {
-    if ((filtered.length > 0 || noResults) && searchResultsRef.current) {
-      searchResultsRef.current.scrollIntoView({ block: 'nearest' })
-    }
-  }, [filtered.length, noResults])
 
   function addIngredient(item) {
     const exists = ingredients.find(i => i.inventory_item_id === item.id)
@@ -334,13 +331,39 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
     setSaving(false)
   }
 
+  // Autosave — for an existing meal, quietly persist changes shortly after
+  // you stop editing, so forgetting to tap Done doesn't lose anything.
+  const [autosaveStatus, setAutosaveStatus] = useState(null) // null | 'saving' | 'saved'
+  const autosaveTimer = useRef(null)
+  const skipNextAutosave = useRef(true)
+  useEffect(() => {
+    if (skipNextAutosave.current) { skipNextAutosave.current = false; return }
+    if (!meal || !onAutosave || !name.trim()) return
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
+    autosaveTimer.current = setTimeout(async () => {
+      setAutosaveStatus('saving')
+      try {
+        await onAutosave(name.trim(), notes.trim(), mealTypes, ingredients, selectedMembers)
+        setAutosaveStatus('saved')
+        setTimeout(() => setAutosaveStatus(cur => cur === 'saved' ? null : cur), 2000)
+      } catch {
+        setAutosaveStatus(null)
+      }
+    }, 1200)
+    return () => clearTimeout(autosaveTimer.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, notes, mealTypes, ingredients, selectedMembers])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {/* Sticky header — Cancel/Done row, plus a thin delete line below it. Both stay visible while scrolling. */}
       <div style={s.formHeaderSticky}>
         <div style={s.formDoneBar}>
           <button style={s.formCancelBtn} onClick={onCancel}>Cancel</button>
-          <p style={s.formDoneTitle}>{meal ? 'Edit meal' : 'New meal'}</p>
+          <p style={s.formDoneTitle}>
+            {meal ? 'Edit meal' : 'New meal'}
+            {autosaveStatus && <span style={s.autosaveStatus}> · {autosaveStatus === 'saving' ? 'Saving…' : 'Saved'}</span>}
+          </p>
           <button style={s.formDoneBtn} onClick={handleSave} disabled={saving || !name.trim()}>
             {saving ? '…' : 'Done'}
           </button>
@@ -400,17 +423,17 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
             <p style={s.formDoneTitle}>Ingredients</p>
             <div style={{ width: 50 }} />
           </div>
-          <div style={s.ingEditorBody}>
+          <div style={s.ingEditorSticky}>
             <label style={s.fieldLabel}>Add ingredients
               <input autoFocus style={s.input} value={ingSearch} onChange={e => { setIngSearch(e.target.value); setShowAddInventory(false) }} placeholder="Search inventory…" autoComplete="off" autoCorrect="off" />
             </label>
             {filtered.length > 0 && (
-              <div ref={searchResultsRef} style={s.dropdown}>
+              <div style={s.dropdown}>
                 {filtered.map(item => <button key={item.id} style={s.dropdownItem} onClick={() => addIngredient(item)}>{item.name}</button>)}
               </div>
             )}
             {noResults && !showAddInventory && (
-              <div ref={searchResultsRef} style={s.dropdown}>
+              <div style={s.dropdown}>
                 <div style={s.noResults}>No match for "{ingSearch.trim()}"</div>
                 <button style={s.dropdownAddBtn} onClick={() => { setNewItemName(ingSearch.trim()); setShowAddInventory(true); setIngSearch('') }}>+ Add "{ingSearch.trim()}" to inventory</button>
               </div>
@@ -434,6 +457,8 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
                 </div>
               </div>
             )}
+          </div>
+          <div style={s.ingEditorBody}>
             {ingredients.length > 0 && (
               <div style={s.ingEditList}>
                 {ingredients.map((ing, idx) => {
@@ -538,6 +563,7 @@ const s = {
   formDoneBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '0.5px solid var(--cream-border)' },
   formDeleteRow: { display: 'block', width: '100%', border: 'none', background: '#fff', color: 'var(--danger)', fontSize: 13, padding: '7px 16px', textAlign: 'center', cursor: 'pointer', borderBottom: '0.5px solid var(--cream-border)' },
   formDoneTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, margin: 0, color: 'var(--charcoal)' },
+  autosaveStatus: { fontFamily: 'var(--font-body)', fontWeight: 400, fontSize: 12, color: 'var(--charcoal-soft)' },
   formDoneBtn: { border: 'none', background: 'var(--primary)', color: '#fff', borderRadius: 8, padding: '7px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   formCancelBtn: { border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 14, padding: '7px 4px', cursor: 'pointer' },
   formWrap: { padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 },
@@ -556,7 +582,8 @@ const s = {
   ingSummaryChevron: { color: 'var(--charcoal-soft)', fontSize: 18 },
   ingEditorScreen: { position: 'fixed', inset: 0, background: '#fff', zIndex: 40, display: 'flex', flexDirection: 'column' },
   ingEditorHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '0.5px solid var(--cream-border)', flexShrink: 0 },
-  ingEditorBody: { flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 16, display: 'flex', flexDirection: 'column', gap: 16, boxSizing: 'border-box' },
+  ingEditorSticky: { flexShrink: 0, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10, borderBottom: '0.5px solid var(--cream-border)', boxSizing: 'border-box' },
+  ingEditorBody: { flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: 16, boxSizing: 'border-box' },
   ingEditRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--cream)', borderRadius: 8, padding: '8px 12px', flexShrink: 0 },
   ingEditName: { fontSize: 14, color: 'var(--charcoal)' },
   tagRow: { display: 'flex', gap: 14, marginTop: 3 },
