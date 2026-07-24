@@ -18,6 +18,7 @@ export default function ListPage({
 }) {
   const [expandedIds, setExpandedIds] = useState(new Set([activeListId].filter(Boolean)))
   const [expandedMealGroups, setExpandedMealGroups] = useState(new Set())
+  const [removeModeGroups, setRemoveModeGroups] = useState(new Set())
   const [showNewList, setShowNewList] = useState(false)
   const [newListName, setNewListName] = useState('')
   const [newListMembers, setNewListMembers] = useState([])
@@ -61,6 +62,15 @@ export default function ListPage({
 
   function toggleMealGroup(key) {
     setExpandedMealGroups(cur => {
+      const next = new Set(cur)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  function toggleRemoveMode(key) {
+    setRemoveModeGroups(cur => {
       const next = new Set(cur)
       if (next.has(key)) next.delete(key)
       else next.add(key)
@@ -206,19 +216,35 @@ export default function ListPage({
                         </button>
                         {mgExpanded && (
                           <div style={{ ...s.mealBannerBody, background: color.bg }}>
-                            {mg.items.map(item => (
-                              <span key={item.id} style={{ ...s.mealBannerItem, fontStyle: item.tag ? 'italic' : 'normal' }}>
-                                {item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}{item.tag ? ` (${item.tag === 'optional' ? 'opt' : 'side'})` : ''}
-                              </span>
-                            ))}
-                            <button
-                              style={{ ...s.mealBannerRemove, color: color.text }}
-                              onClick={() => {
-                                if (window.confirm(`Remove all ${mg.items.length} ${mg.name} ingredients from this cart?`)) onRemoveMeal(list.id, mg.id)
-                              }}
-                            >
-                              Remove all
-                            </button>
+                            {removeModeGroups.has(key) ? (
+                              <div style={s.mealBannerRemovableList}>
+                                {mg.items.map(item => (
+                                  <button key={item.id} style={{ ...s.mealBannerItemRemovable, color: color.text }} onClick={() => onRemove(item.id)}>
+                                    <span style={s.mealBannerX}>✕</span>
+                                    {item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}{item.tag ? ` (${item.tag === 'optional' ? 'opt' : 'side'})` : ''}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              mg.items.map(item => (
+                                <span key={item.id} style={{ ...s.mealBannerItem, fontStyle: item.tag ? 'italic' : 'normal' }}>
+                                  {item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}{item.tag ? ` (${item.tag === 'optional' ? 'opt' : 'side'})` : ''}
+                                </span>
+                              ))
+                            )}
+                            <div style={s.mealBannerActions}>
+                              <button
+                                style={{ ...s.mealBannerAction, color: color.text }}
+                                onClick={() => {
+                                  if (window.confirm(`Remove all ${mg.items.length} ${mg.name} ingredients from this cart?`)) onRemoveMeal(list.id, mg.id)
+                                }}
+                              >
+                                Remove meal
+                              </button>
+                              <button style={{ ...s.mealBannerAction, color: color.text }} onClick={() => toggleRemoveMode(key)}>
+                                {removeModeGroups.has(key) ? 'Done' : 'Remove ingredients'}
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -423,7 +449,11 @@ const s = {
   mealBannerText: { lineHeight: 1.4 },
   mealBannerBody: { padding: '2px 14px 9px', display: 'flex', flexWrap: 'wrap', gap: '4px 10px', borderBottom: '0.5px solid rgba(0,0,0,0.06)' },
   mealBannerItem: { fontSize: 12, opacity: 0.85 },
-  mealBannerRemove: { border: 'none', background: 'none', fontSize: 12, fontWeight: 700, textDecoration: 'underline', padding: 0, cursor: 'pointer', width: '100%', textAlign: 'left', marginTop: 2 },
+  mealBannerRemovableList: { display: 'flex', flexDirection: 'column', gap: 2, width: '100%' },
+  mealBannerItemRemovable: { display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', padding: '4px 0', fontSize: 12, textAlign: 'left', cursor: 'pointer', width: '100%' },
+  mealBannerX: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', border: '1px solid currentColor', fontSize: 9, flexShrink: 0 },
+  mealBannerActions: { display: 'flex', gap: 16, marginTop: 4, width: '100%' },
+  mealBannerAction: { border: 'none', background: 'none', padding: 0, fontSize: 12, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' },
   aisleHeader: { background: 'var(--aisle-bg)', padding: '5px 14px', fontSize: 10, fontWeight: 600, color: 'var(--aisle-text)', letterSpacing: '0.08em', textTransform: 'uppercase' },
   row: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '0.5px solid var(--cream)' },
   checkbox: { width: 22, height: 22, borderRadius: 6, border: '1.5px solid', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer' },
