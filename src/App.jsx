@@ -21,7 +21,7 @@ function AppShell() {
     loading, error,
     createList, updateList, deleteList,
     addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList,
-    updateQuantity, toggleChecked, removeFromList, clearList,
+    updateQuantity, toggleChecked, removeFromList, clearList, removeMealFromList,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
     addMeal, updateMeal, deleteMeal,
@@ -52,6 +52,7 @@ function AppShell() {
             sections={sections} listItems={allListItems} lists={lists} listMembers={listMembers}
             activeListId={activeListId} activeList={activeList} onSwitchList={setActiveListId}
             onToggle={toggleChecked} onRemove={removeFromList} onClear={clearList}
+            onRemoveMeal={removeMealFromList}
             onUpdateQuantity={updateQuantity} onCreateList={createList}
             onUpdateList={updateList} onDeleteList={deleteList}
             onAddFreetext={addFreetextItemToList} otherMembers={otherMembers}
