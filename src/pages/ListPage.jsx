@@ -12,7 +12,7 @@ const MEAL_COLORS = [
 
 export default function ListPage({
   sections, listItems, lists, listMembers, activeListId, activeList,
-  onSwitchList, onToggle, onRemove, onClear, onUpdateQuantity,
+  onSwitchList, onToggle, onRemove, onClear, onUpdateQuantity, onRemoveMeal,
   onCreateList, onDeleteList, onUpdateList, onAddFreetext,
   otherMembers, onMenuOpen,
 }) {
@@ -211,6 +211,14 @@ export default function ListPage({
                                 {item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}{item.tag ? ` (${item.tag === 'optional' ? 'opt' : 'side'})` : ''}
                               </span>
                             ))}
+                            <button
+                              style={{ ...s.mealBannerRemove, color: color.text }}
+                              onClick={() => {
+                                if (window.confirm(`Remove all ${mg.items.length} ${mg.name} ingredients from this cart?`)) onRemoveMeal(list.id, mg.id)
+                              }}
+                            >
+                              Remove all
+                            </button>
                           </div>
                         )}
                       </div>
@@ -415,6 +423,7 @@ const s = {
   mealBannerText: { lineHeight: 1.4 },
   mealBannerBody: { padding: '2px 14px 9px', display: 'flex', flexWrap: 'wrap', gap: '4px 10px', borderBottom: '0.5px solid rgba(0,0,0,0.06)' },
   mealBannerItem: { fontSize: 12, opacity: 0.85 },
+  mealBannerRemove: { border: 'none', background: 'none', fontSize: 12, fontWeight: 700, textDecoration: 'underline', padding: 0, cursor: 'pointer', width: '100%', textAlign: 'left', marginTop: 2 },
   aisleHeader: { background: 'var(--aisle-bg)', padding: '5px 14px', fontSize: 10, fontWeight: 600, color: 'var(--aisle-text)', letterSpacing: '0.08em', textTransform: 'uppercase' },
   row: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '0.5px solid var(--cream)' },
   checkbox: { width: 22, height: 22, borderRadius: 6, border: '1.5px solid', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer' },
