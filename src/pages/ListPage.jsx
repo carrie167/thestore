@@ -271,7 +271,7 @@ export default function ListPage({
                     <p style={s.emptyItems}>No items yet — head to Inventory to add some.</p>
                   )}
 
-                  {/* Quick add */}
+                  {/* Add non-inventory item */}
                   {showFreetext ? (
                     <div style={s.freetextBar}>
                       <input
@@ -297,7 +297,7 @@ export default function ListPage({
                     </div>
                   ) : (
                     <button style={s.quickAddBtn} onClick={() => setShowFreetextByList(cur => ({ ...cur, [list.id]: true }))}>
-                      + Quick add item
+                      + Add non-inventory item
                     </button>
                   )}
 
