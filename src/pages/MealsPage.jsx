@@ -9,6 +9,15 @@ function mealTypesOf(meal) {
   return Array.isArray(meal.meal_type) ? meal.meal_type : [meal.meal_type]
 }
 
+const MEAL_TYPES = [
+  { id: 'weeknight', label: '🌙 Weeknight', badgeBg: 'var(--accent-light)', badgeColor: 'var(--accent)' },
+  { id: 'sunday', label: '☀️ Sunday', badgeBg: 'var(--tan-light)', badgeColor: 'var(--tan)' },
+  { id: 'justme', label: '👤 Just Me', badgeBg: 'var(--sage)', badgeColor: 'var(--sage-dark)' },
+]
+function mealTypeInfo(id) {
+  return MEAL_TYPES.find(t => t.id === id) || { id, label: id, badgeBg: 'var(--cream)', badgeColor: 'var(--charcoal-soft)' }
+}
+
 export default function MealsPage({
   meals, mealIngredients, mealMembers, inventory, sections, activeList,
   otherMembers, onAddMealToList, onAddMeal, onUpdateMeal, onDeleteMeal,
@@ -21,7 +30,7 @@ export default function MealsPage({
   const [addingId, setAddingId] = useState(null)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all') // all | weeknight | sunday
-  const [sortBy, setSortBy] = useState('name') // name | price
+  const [sortBy, setSortBy] = useState('name') // name | price_high | price_low
 
   const inventoryById = useMemo(() => new Map(inventory.map(i => [i.id, i])), [inventory])
 
@@ -66,7 +75,8 @@ export default function MealsPage({
     })
     // Sort
     if (sortBy === 'name') result = [...result].sort((a, b) => a.name.localeCompare(b.name))
-    if (sortBy === 'price') result = [...result].sort((a, b) => mealCost(b.id) - mealCost(a.id))
+    if (sortBy === 'price_high') result = [...result].sort((a, b) => mealCost(b.id) - mealCost(a.id))
+    if (sortBy === 'price_low') result = [...result].sort((a, b) => mealCost(a.id) - mealCost(b.id))
     return result
   }, [meals, search, typeFilter, sortBy, ingredientsByMeal, inventoryById])
 
@@ -95,19 +105,20 @@ export default function MealsPage({
         />
         <div style={s.filterRow}>
           <div style={s.typePills}>
-            {['all', 'weeknight', 'sunday'].map(t => (
+            {['all', ...MEAL_TYPES.map(t => t.id)].map(t => (
               <button
                 key={t}
                 style={{ ...s.typePill, background: typeFilter === t ? 'var(--primary)' : 'var(--cream)', color: typeFilter === t ? '#fff' : 'var(--charcoal-soft)', border: typeFilter === t ? 'none' : '1px solid var(--cream-border)' }}
                 onClick={() => setTypeFilter(t)}
               >
-                {t === 'all' ? 'All' : t === 'weeknight' ? '🌙 Weeknight' : '☀️ Sunday'}
+                {t === 'all' ? 'All' : mealTypeInfo(t).label}
               </button>
             ))}
           </div>
           <select style={s.sortSelect} value={sortBy} onChange={e => setSortBy(e.target.value)}>
             <option value="name">A–Z</option>
-            <option value="price">Price ↓</option>
+            <option value="price_high">Price ↓ (high–low)</option>
+            <option value="price_low">Price ↑ (low–high)</option>
           </select>
         </div>
       </div>
@@ -168,8 +179,8 @@ export default function MealsPage({
                   <div style={s.cardTitleRow}>
                     <p style={s.mealName}>{meal.name}</p>
                     {mealTypesOf(meal).map(t => (
-                      <span key={t} style={{ ...s.typeBadge, background: t === 'weeknight' ? 'var(--accent-light)' : 'var(--tan-light)', color: t === 'weeknight' ? 'var(--accent)' : 'var(--tan)' }}>
-                        {t === 'weeknight' ? '🌙 Weeknight' : '☀️ Sunday'}
+                      <span key={t} style={{ ...s.typeBadge, background: mealTypeInfo(t).badgeBg, color: mealTypeInfo(t).badgeColor }}>
+                        {mealTypeInfo(t).label}
                       </span>
                     ))}
                   </div>
@@ -382,7 +393,7 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
       <div>
         <p style={{ ...s.fieldLabel, marginBottom: 8 }}>Type</p>
         <div style={{ display: 'flex', gap: 8 }}>
-          {[['weeknight', '🌙 Weeknight'], ['sunday', '☀️ Sunday']].map(([val, label]) => (
+          {MEAL_TYPES.map(({ id: val, label }) => (
             <button
               key={val}
               style={{ ...s.typePill, background: mealTypes.includes(val) ? 'var(--primary)' : 'var(--cream)', color: mealTypes.includes(val) ? '#fff' : 'var(--charcoal-soft)', border: mealTypes.includes(val) ? 'none' : '1px solid var(--cream-border)', padding: '7px 14px' }}
