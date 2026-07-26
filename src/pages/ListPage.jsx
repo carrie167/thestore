@@ -176,12 +176,19 @@ export default function ListPage({
                       {getListSharedWith(list.id).length > 0 ? 'Shared' : 'Private'}
                       {' · '}{allItems.length} item{allItems.length !== 1 ? 's' : ''}
                       {total > 0 ? ` · $${total.toFixed(2)}` : ''}
-                      {allItems.length > 0 ? ` · ${checkedCount} checked · ${allItems.length - checkedCount} remaining` : ''}
                     </p>
-                    {total > 0 && (
-                      <p style={s.listMetaCost}>
-                        ${checkedTotal.toFixed(2)} checked · ${remainingTotal.toFixed(2)} remaining
-                      </p>
+                    {allItems.length > 0 && (
+                      <div style={s.progressCols}>
+                        <div style={s.progressCol}>
+                          <p style={s.progressLabel}>Checked</p>
+                          <p style={s.progressValue}>{checkedCount} / ${checkedTotal.toFixed(2)}</p>
+                        </div>
+                        <div style={s.progressDivider} />
+                        <div style={s.progressCol}>
+                          <p style={s.progressLabel}>Remaining</p>
+                          <p style={s.progressValue}>{allItems.length - checkedCount} / ${remainingTotal.toFixed(2)}</p>
+                        </div>
+                      </div>
                     )}
                   </div>
                   <button style={s.expandBtn} onClick={() => toggleExpand(list.id)}>
@@ -234,7 +241,7 @@ export default function ListPage({
                               </div>
                             ) : (
                               mg.items.map(item => (
-                                <span key={item.id} style={{ ...s.mealBannerItem, fontStyle: item.tag ? 'italic' : 'normal' }}>
+                                <span key={item.id} style={{ ...s.mealBannerItem, fontStyle: item.tag ? 'italic' : 'normal', textDecoration: item.is_checked ? 'line-through' : 'none', opacity: item.is_checked ? 0.55 : 0.85 }}>
                                   {item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}{item.tag ? ` (${item.tag === 'optional' ? 'opt' : 'side'})` : ''}
                                 </span>
                               ))
@@ -446,7 +453,11 @@ const s = {
   cardTop: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 },
   listName: { margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--charcoal)' },
   listMeta: { margin: '3px 0 0', fontSize: 11, color: 'var(--charcoal-soft)' },
-  listMetaCost: { margin: '2px 0 0', fontSize: 11, color: 'var(--charcoal-soft)', fontFamily: 'var(--font-mono)' },
+  progressCols: { display: 'flex', alignItems: 'stretch', marginTop: 6, border: '1px solid var(--cream-border)', borderRadius: 8, overflow: 'hidden' },
+  progressCol: { flex: 1, padding: '5px 10px', textAlign: 'center' },
+  progressDivider: { width: 1, background: 'var(--cream-border)' },
+  progressLabel: { margin: 0, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--charcoal-soft)' },
+  progressValue: { margin: '1px 0 0', fontSize: 13, fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--charcoal)' },
   expandBtn: { border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 18, padding: '0 4px', lineHeight: 1, cursor: 'pointer', flexShrink: 0 },
   cardActions: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   activeCartPill: { display: 'flex', alignItems: 'center', gap: 6, background: 'var(--primary)', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#fff' },
