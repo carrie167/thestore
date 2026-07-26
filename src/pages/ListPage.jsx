@@ -174,7 +174,7 @@ export default function ListPage({
                       {getListSharedWith(list.id).length > 0 ? 'Shared' : 'Private'}
                       {' · '}{allItems.length} item{allItems.length !== 1 ? 's' : ''}
                       {total > 0 ? ` · $${total.toFixed(2)}` : ''}
-                      {allItems.length > 0 ? ` · ${checkedCount}/${allItems.length} checked` : ''}
+                      {allItems.length > 0 ? ` · ${checkedCount} checked · ${allItems.length - checkedCount} remaining` : ''}
                     </p>
                   </div>
                   <button style={s.expandBtn} onClick={() => toggleExpand(list.id)}>
