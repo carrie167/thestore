@@ -155,6 +155,8 @@ export default function ListPage({
           const isExpanded = expandedIds.has(list.id)
           const total = allItems.reduce((s, i) => s + (i.est_price ? Number(i.est_price) * (i.quantity || 1) : 0), 0)
           const checkedCount = allItems.filter(i => i.is_checked).length
+          const checkedTotal = allItems.filter(i => i.is_checked).reduce((s, i) => s + (i.est_price ? Number(i.est_price) * (i.quantity || 1) : 0), 0)
+          const remainingTotal = total - checkedTotal
           const { mealGroups } = splitByMeal(allItems)
           const grouped = groupBySection(allItems)
           const showFreetext = showFreetextByList[list.id]
@@ -176,6 +178,11 @@ export default function ListPage({
                       {total > 0 ? ` · $${total.toFixed(2)}` : ''}
                       {allItems.length > 0 ? ` · ${checkedCount} checked · ${allItems.length - checkedCount} remaining` : ''}
                     </p>
+                    {total > 0 && (
+                      <p style={s.listMetaCost}>
+                        ${checkedTotal.toFixed(2)} checked · ${remainingTotal.toFixed(2)} remaining
+                      </p>
+                    )}
                   </div>
                   <button style={s.expandBtn} onClick={() => toggleExpand(list.id)}>
                     {isExpanded ? '∧' : '∨'}
@@ -439,6 +446,7 @@ const s = {
   cardTop: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 },
   listName: { margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--charcoal)' },
   listMeta: { margin: '3px 0 0', fontSize: 11, color: 'var(--charcoal-soft)' },
+  listMetaCost: { margin: '2px 0 0', fontSize: 11, color: 'var(--charcoal-soft)', fontFamily: 'var(--font-mono)' },
   expandBtn: { border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 18, padding: '0 4px', lineHeight: 1, cursor: 'pointer', flexShrink: 0 },
   cardActions: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   activeCartPill: { display: 'flex', alignItems: 'center', gap: 6, background: 'var(--primary)', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 700, color: '#fff' },
