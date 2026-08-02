@@ -46,7 +46,7 @@ export default function InventoryPage({
       if (staplesOnly && !item.is_staple) return false
       if (sectionFilter && item.section_id !== sectionFilter) return false
       if (!q) return true
-      return item.name.toLowerCase().includes(q) || (sectionById.get(item.section_id)?.name || '').toLowerCase().includes(q)
+      return item.name.toLowerCase().includes(q)
     })
   }, [inventory, query, sectionFilter, staplesOnly, sectionById])
 
