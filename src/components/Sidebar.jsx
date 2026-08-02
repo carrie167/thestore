@@ -3,6 +3,7 @@ export default function Sidebar({ isOpen, onClose, activeTab, onNavigate, myProf
     { id: 'list', label: 'Carts', icon: '🛒' },
     { id: 'inventory', label: 'Inventory', icon: '📦' },
     { id: 'meals', label: 'Meals', icon: '🍽️' },
+    { id: 'notes', label: 'Notes', icon: '📝' },
   ]
 
   return (
