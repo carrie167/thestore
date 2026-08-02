@@ -13,6 +13,7 @@ const MEAL_TYPES = [
   { id: 'weeknight', label: '🌙 Weeknight', badgeBg: 'var(--accent-light)', badgeColor: 'var(--accent)' },
   { id: 'sunday', label: '☀️ Sunday', badgeBg: 'var(--tan-light)', badgeColor: 'var(--tan)' },
   { id: 'justme', label: '👤 Just Me', badgeBg: 'var(--sage)', badgeColor: 'var(--sage-dark)' },
+  { id: 'side', label: '🥗 Side', badgeBg: 'var(--danger-light)', badgeColor: 'var(--danger)' },
 ]
 function mealTypeInfo(id) {
   return MEAL_TYPES.find(t => t.id === id) || { id, label: id, badgeBg: 'var(--cream)', badgeColor: 'var(--charcoal-soft)' }
@@ -207,10 +208,10 @@ export default function MealsPage({
                       const price = item?.est_price ? Number(item.est_price) * ing.quantity : null
                       return (
                         <div key={ing.id} style={s.ingRow}>
-                          <span style={{ ...s.ingName, ...(ing.tag ? { fontStyle: 'italic' } : {}) }}>
+                          <span style={{ ...s.ingName, ...(ing.tags?.length ? { fontStyle: 'italic' } : {}) }}>
                             {ing.quantity > 1 && <span style={s.ingQty}>{ing.quantity}× </span>}
                             {item?.name || ing.name}
-                            {ing.tag && <span style={s.optTag}> ({ing.tag === 'optional' ? 'opt' : 'side'})</span>}
+                            {ing.tags?.length > 0 && <span style={s.optTag}> ({ing.tags.map(t => t === 'optional' ? 'opt' : 'side').join(', ')})</span>}
                           </span>
                           {price != null && <span style={s.ingPrice}>${price.toFixed(2)}</span>}
                         </div>
@@ -278,7 +279,7 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
   const [name, setName] = useState(meal?.name || '')
   const [notes, setNotes] = useState(meal?.notes || '')
   const [mealTypes, setMealTypes] = useState(() => mealTypesOf(meal))
-  const [ingredients, setIngredients] = useState(() => existingIngredients.map(ing => ({ inventory_item_id: ing.inventory_item_id, name: ing.name, quantity: ing.quantity, tag: ing.tag || null })))
+  const [ingredients, setIngredients] = useState(() => existingIngredients.map(ing => ({ inventory_item_id: ing.inventory_item_id, name: ing.name, quantity: ing.quantity, tags: ing.tags || (ing.tag ? [ing.tag] : []) })))
   const [selectedMembers, setSelectedMembers] = useState(existingMembers)
   const [ingSearch, setIngSearch] = useState('')
   const [saving, setSaving] = useState(false)
@@ -301,7 +302,7 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
   function addIngredient(item) {
     const exists = ingredients.find(i => i.inventory_item_id === item.id)
     if (exists) setIngredients(cur => cur.map(i => i.inventory_item_id === item.id ? { ...i, quantity: i.quantity + 1 } : i))
-    else setIngredients(cur => [...cur, { inventory_item_id: item.id, name: item.name, quantity: 1, tag: null }])
+    else setIngredients(cur => [...cur, { inventory_item_id: item.id, name: item.name, quantity: 1, tags: [] }])
     setIngSearch('')
   }
 
@@ -310,8 +311,12 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
     else setIngredients(cur => cur.map((ing, i) => i === idx ? { ...ing, quantity: qty } : ing))
   }
 
-  function setIngTag(idx, tag) {
-    setIngredients(cur => cur.map((ing, i) => i === idx ? { ...ing, tag: ing.tag === tag ? null : tag } : ing))
+  function toggleIngTag(idx, tag) {
+    setIngredients(cur => cur.map((ing, i) => {
+      if (i !== idx) return ing
+      const has = (ing.tags || []).includes(tag)
+      return { ...ing, tags: has ? ing.tags.filter(t => t !== tag) : [...(ing.tags || []), tag] }
+    }))
   }
 
   async function handleAddNewItem() {
@@ -477,15 +482,15 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
                   return (
                     <div key={idx} style={s.ingEditRow}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ ...s.ingEditName, ...(ing.tag ? { fontStyle: 'italic', color: 'var(--charcoal-soft)' } : {}) }}>
+                        <div style={{ ...s.ingEditName, ...(ing.tags?.length ? { fontStyle: 'italic', color: 'var(--charcoal-soft)' } : {}) }}>
                           {item?.name || ing.name}
                         </div>
                         <div style={s.tagRow}>
-                          <button style={s.tagOption} onClick={() => setIngTag(idx, 'optional')}>
-                            <span style={s.tagRadio}>{ing.tag === 'optional' ? '●' : '○'}</span> Optional
+                          <button style={s.tagOption} onClick={() => toggleIngTag(idx, 'optional')}>
+                            <span style={s.tagRadio}>{ing.tags?.includes('optional') ? '☑' : '☐'}</span> Optional
                           </button>
-                          <button style={s.tagOption} onClick={() => setIngTag(idx, 'side')}>
-                            <span style={s.tagRadio}>{ing.tag === 'side' ? '●' : '○'}</span> Side
+                          <button style={s.tagOption} onClick={() => toggleIngTag(idx, 'side')}>
+                            <span style={s.tagRadio}>{ing.tags?.includes('side') ? '☑' : '☐'}</span> Side
                           </button>
                         </div>
                       </div>
