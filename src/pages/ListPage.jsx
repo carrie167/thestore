@@ -10,15 +10,22 @@ const MEAL_COLORS = [
   { bg: 'var(--danger-light)', text: 'var(--danger)' },
 ]
 
+function tagLabel(tags) {
+  if (!tags?.length) return ''
+  return ` (${tags.map(t => t === 'optional' ? 'opt' : 'side').join(', ')})`
+}
+
 export default function ListPage({
   sections, listItems, lists, listMembers, activeListId, activeList,
   onSwitchList, onToggle, onRemove, onClear, onUpdateQuantity, onRemoveMeal,
   onCreateList, onDeleteList, onUpdateList, onAddFreetext,
-  otherMembers, onMenuOpen,
+  otherMembers, onMenuOpen, inventory, onAddFromInventory,
 }) {
   const [expandedIds, setExpandedIds] = useState(new Set([activeListId].filter(Boolean)))
   const [expandedMealGroups, setExpandedMealGroups] = useState(new Set())
   const [removeModeGroups, setRemoveModeGroups] = useState(new Set())
+  const [showInvSearchByList, setShowInvSearchByList] = useState({})
+  const [invSearchByList, setInvSearchByList] = useState({})
   const [showNewList, setShowNewList] = useState(false)
   const [newListName, setNewListName] = useState('')
   const [newListMembers, setNewListMembers] = useState([])
@@ -235,14 +242,14 @@ export default function ListPage({
                                 {mg.items.map(item => (
                                   <button key={item.id} style={{ ...s.mealBannerItemRemovable, color: color.text }} onClick={() => onRemove(item.id)}>
                                     <span style={s.mealBannerX}>✕</span>
-                                    {item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}{item.tag ? ` (${item.tag === 'optional' ? 'opt' : 'side'})` : ''}
+                                    {item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}{tagLabel(item.tags)}
                                   </button>
                                 ))}
                               </div>
                             ) : (
                               mg.items.map(item => (
-                                <span key={item.id} style={{ ...s.mealBannerItem, fontStyle: item.tag ? 'italic' : 'normal', textDecoration: item.is_checked ? 'line-through' : 'none', opacity: item.is_checked ? 0.55 : 0.85 }}>
-                                  {item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}{item.tag ? ` (${item.tag === 'optional' ? 'opt' : 'side'})` : ''}
+                                <span key={item.id} style={{ ...s.mealBannerItem, fontStyle: item.tags?.length ? 'italic' : 'normal', textDecoration: item.is_checked ? 'line-through' : 'none', opacity: item.is_checked ? 0.55 : 0.85 }}>
+                                  {item.name}{item.quantity > 1 ? ` ×${item.quantity}` : ''}{tagLabel(item.tags)}
                                 </span>
                               ))
                             )}
@@ -283,6 +290,55 @@ export default function ListPage({
 
                   {allItems.length === 0 && (
                     <p style={s.emptyItems}>No items yet — head to Inventory to add some.</p>
+                  )}
+
+                  {/* Add from inventory — search-only, no create/edit */}
+                  {showInvSearchByList[list.id] ? (
+                    <div style={s.freetextBar}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <input
+                          autoFocus
+                          style={{ ...s.freetextInput, flex: 1 }}
+                          value={invSearchByList[list.id] || ''}
+                          onChange={e => setInvSearchByList(cur => ({ ...cur, [list.id]: e.target.value }))}
+                          placeholder="Search inventory…"
+                          autoComplete="off" autoCorrect="off"
+                        />
+                        <button
+                          style={s.freetextCancel}
+                          onClick={() => {
+                            setShowInvSearchByList(cur => ({ ...cur, [list.id]: false }))
+                            setInvSearchByList(cur => ({ ...cur, [list.id]: '' }))
+                          }}
+                        >×</button>
+                      </div>
+                      {(() => {
+                        const q = (invSearchByList[list.id] || '').trim().toLowerCase()
+                        if (!q) return null
+                        const matches = inventory.filter(i => i.name.toLowerCase().includes(q)).slice(0, 8)
+                        if (matches.length === 0) return <div style={s.noResults}>No match for "{q}"</div>
+                        return (
+                          <div style={s.dropdown}>
+                            {matches.map(item => (
+                              <button
+                                key={item.id}
+                                style={s.dropdownItem}
+                                onClick={() => {
+                                  onAddFromInventory(item, list.id)
+                                  setInvSearchByList(cur => ({ ...cur, [list.id]: '' }))
+                                }}
+                              >
+                                {item.name}
+                              </button>
+                            ))}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  ) : (
+                    <button style={s.quickAddBtn} onClick={() => setShowInvSearchByList(cur => ({ ...cur, [list.id]: true }))}>
+                      + Add from inventory
+                    </button>
                   )}
 
                   {/* Add non-inventory item */}
@@ -404,11 +460,11 @@ function ListRow({ item, onToggle, onRemove, onUpdateQuantity }) {
       </button>
 
       <button
-        style={{ ...s.rowLabel, color: item.is_checked ? 'var(--charcoal-soft)' : 'var(--charcoal)', textDecoration: item.is_checked ? 'line-through' : 'none', fontStyle: item.tag ? 'italic' : 'normal' }}
+        style={{ ...s.rowLabel, color: item.is_checked ? 'var(--charcoal-soft)' : 'var(--charcoal)', textDecoration: item.is_checked ? 'line-through' : 'none', fontStyle: item.tags?.length ? 'italic' : 'normal' }}
         onClick={() => onToggle(item)}
       >
         {item.name}
-        {item.tag && <span style={s.optTag}> ({item.tag === 'optional' ? 'opt' : 'side'})</span>}
+        {item.tags?.length > 0 && <span style={s.optTag}>{tagLabel(item.tags)}</span>}
       </button>
 
       <div style={s.rowRight}>
@@ -488,6 +544,9 @@ const s = {
   freetextAdd: { border: 'none', background: 'var(--primary)', color: '#fff', borderRadius: 8, padding: '8px 14px', fontWeight: 600, fontSize: 13, cursor: 'pointer', flexShrink: 0 },
   freetextCancel: { border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 20, padding: '0 4px', cursor: 'pointer', flexShrink: 0 },
   quickAddBtn: { display: 'block', width: '100%', border: 'none', background: 'none', color: 'var(--accent)', fontSize: 13, padding: '10px 14px', textAlign: 'left', textDecoration: 'underline', cursor: 'pointer', borderTop: '0.5px solid var(--cream-border)' },
+  dropdown: { border: '1px solid var(--cream-border)', borderRadius: 8, marginTop: 6, overflow: 'hidden', background: '#fff' },
+  dropdownItem: { display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: '10px 12px', fontSize: 14, color: 'var(--charcoal)', cursor: 'pointer', borderBottom: '0.5px solid var(--cream-border)' },
+  noResults: { padding: '8px 12px', fontSize: 13, color: 'var(--charcoal-soft)' },
   clearRow: { padding: '8px 14px', display: 'flex', justifyContent: 'flex-end', borderTop: '0.5px solid var(--cream-border)' },
   clearBtn: { border: 'none', background: 'var(--danger-light)', color: 'var(--danger)', borderRadius: 20, padding: '5px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer' },
   sheetOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 20 },
