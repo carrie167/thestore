@@ -13,6 +13,8 @@ export function useStoreData() {
   const [mealMembers, setMealMembers] = useState([])
   const [mealIngredients, setMealIngredients] = useState([])
   const [householdMembers, setHouseholdMembers] = useState([]) // { user_id, display_name }
+  const [notes, setNotes] = useState([]) // rows visible to me: mine + shared with me
+  const [noteMembers, setNoteMembers] = useState([]) // { note_id, user_id }
   const [activeListId, setActiveListId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -77,6 +79,13 @@ export function useStoreData() {
       })))
     }
 
+    const [notesRes, noteMembersRes] = await Promise.all([
+      supabase.from('notes').select('*'),
+      supabase.from('note_members').select('*'),
+    ])
+    setNotes(notesRes.data || [])
+    setNoteMembers(noteMembersRes.data || [])
+
     setLoading(false)
   }, [])
 
@@ -103,6 +112,35 @@ export function useStoreData() {
     const { data, error } = await supabase.from('household_members').select('household_id').eq('user_id', user.id).limit(1).single()
     if (error) throw error
     return data.household_id
+  }
+
+  // ── Notes ── (mirrors lists: each note is private to its creator unless shared)
+  async function createMyNote(content = '') {
+    const household_id = await getHouseholdId()
+    const { data, error } = await supabase.from('notes')
+      .insert({ household_id, created_by: user.id, content, updated_by: user.id }).select().single()
+    if (error) throw error
+    setNotes(cur => [...cur, data])
+    return data
+  }
+
+  async function updateNoteContent(noteId, content) {
+    const { data, error } = await supabase.from('notes')
+      .update({ content, updated_at: new Date().toISOString(), updated_by: user.id })
+      .eq('id', noteId).select().single()
+    if (error) throw error
+    setNotes(cur => cur.map(n => n.id === noteId ? data : n))
+  }
+
+  async function updateNoteSharing(noteId, sharedWithUserIds = []) {
+    await supabase.from('note_members').delete().eq('note_id', noteId)
+    let newMembers = []
+    if (sharedWithUserIds.length > 0) {
+      const rows = sharedWithUserIds.map(uid => ({ note_id: noteId, user_id: uid }))
+      const { data: members } = await supabase.from('note_members').insert(rows).select()
+      if (members) newMembers = members
+    }
+    setNoteMembers(cur => [...cur.filter(m => m.note_id !== noteId), ...newMembers])
   }
 
   // ── List mutations ──
@@ -191,7 +229,7 @@ export function useStoreData() {
         added_by: user.id,
         source_meal_id: meal.id,
         source_meal_name: meal.name,
-        tag: ing.tag || null,
+        tags: ing.tags?.length ? ing.tags : null,
       }).select().single()
       if (error) throw error
       setListItems(cur => [...cur, data])
@@ -428,7 +466,7 @@ export function useStoreData() {
   return {
     sections, inventory, lists, listMembers, activeListId, activeList, setActiveListId,
     listItems: activeListItems, allListItems: listItems, meals, mealMembers, mealIngredients,
-    householdMembers, myProfile, otherMembers,
+    householdMembers, myProfile, otherMembers, notes, noteMembers, createMyNote, updateNoteContent, updateNoteSharing,
     loading, error, reload: loadAll,
     createList, updateList, deleteList,
     addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList,
