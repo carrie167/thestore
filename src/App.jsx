@@ -6,6 +6,7 @@ import AuthPage from './pages/AuthPage'
 import ListPage from './pages/ListPage'
 import InventoryPage from './pages/InventoryPage'
 import MealsPage from './pages/MealsPage'
+import NotesPage from './pages/NotesPage'
 import SettingsPage from './pages/SettingsPage'
 import Sidebar from './components/Sidebar'
 
@@ -17,7 +18,7 @@ function AppShell() {
   const {
     sections, inventory, lists, listMembers, activeListId, activeList, setActiveListId,
     listItems, allListItems, meals, mealMembers, mealIngredients,
-    householdMembers, myProfile, otherMembers,
+    householdMembers, myProfile, otherMembers, notes, noteMembers, createMyNote, updateNoteContent, updateNoteSharing,
     loading, error,
     createList, updateList, deleteList,
     addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList,
@@ -56,6 +57,7 @@ function AppShell() {
             onUpdateQuantity={updateQuantity} onCreateList={createList}
             onUpdateList={updateList} onDeleteList={deleteList}
             onAddFreetext={addFreetextItemToList} otherMembers={otherMembers}
+            inventory={inventory} onAddFromInventory={addInventoryItemToList}
             onMenuOpen={() => setSidebarOpen(true)}
           />
         )}
@@ -76,6 +78,13 @@ function AppShell() {
             otherMembers={otherMembers} onAddMealToList={addMealToList}
             onAddMeal={addMeal} onUpdateMeal={updateMeal} onDeleteMeal={deleteMeal}
             onAddInventoryItem={addInventoryItem} onMenuOpen={() => setSidebarOpen(true)}
+          />
+        )}
+        {tab === 'notes' && (
+          <NotesPage
+            notes={notes} noteMembers={noteMembers} otherMembers={otherMembers}
+            onCreateMyNote={createMyNote} onUpdateContent={updateNoteContent} onUpdateSharing={updateNoteSharing}
+            onMenuOpen={() => setSidebarOpen(true)}
           />
         )}
         {tab === 'settings' && (
