@@ -243,6 +243,12 @@ export function useStoreData() {
     setListItems(cur => cur.map(i => i.id === data.id ? data : i))
   }
 
+  async function updateItemStoreTag(itemId, tag) {
+    const { data, error } = await supabase.from('list_items').update({ store_tag: tag || null }).eq('id', itemId).select().single()
+    if (error) throw error
+    setListItems(cur => cur.map(i => i.id === data.id ? data : i))
+  }
+
   async function decrementInventoryItemInList(inventoryItem, listId = activeListId) {
     if (!listId) return
     const rows = listItems.filter(i => i.list_id === listId && i.inventory_item_id === inventoryItem.id)
@@ -470,7 +476,7 @@ export function useStoreData() {
     loading, error, reload: loadAll,
     createList, updateList, deleteList,
     addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList,
-    updateQuantity, toggleChecked, removeFromList, clearList, removeMealFromList,
+    updateQuantity, toggleChecked, removeFromList, clearList, removeMealFromList, updateItemStoreTag,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
     addMeal, updateMeal, deleteMeal,
