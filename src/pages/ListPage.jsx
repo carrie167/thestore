@@ -19,13 +19,16 @@ export default function ListPage({
   sections, listItems, lists, listMembers, activeListId, activeList,
   onSwitchList, onToggle, onRemove, onClear, onUpdateQuantity, onRemoveMeal,
   onCreateList, onDeleteList, onUpdateList, onAddFreetext,
-  otherMembers, onMenuOpen, inventory, onAddFromInventory,
+  otherMembers, onMenuOpen, inventory, onAddFromInventory, onSetStoreTag,
 }) {
   const [expandedIds, setExpandedIds] = useState(new Set([activeListId].filter(Boolean)))
   const [expandedMealGroups, setExpandedMealGroups] = useState(new Set())
   const [removeModeGroups, setRemoveModeGroups] = useState(new Set())
   const [showInvSearchByList, setShowInvSearchByList] = useState({})
   const [invSearchByList, setInvSearchByList] = useState({})
+  const [storeFilterByList, setStoreFilterByList] = useState({})
+  const [tagPickerFor, setTagPickerFor] = useState(null) // { itemId, listId } | null
+  const [newTagText, setNewTagText] = useState('')
   const [showNewList, setShowNewList] = useState(false)
   const [newListName, setNewListName] = useState('')
   const [newListMembers, setNewListMembers] = useState([])
@@ -165,7 +168,17 @@ export default function ListPage({
           const checkedTotal = allItems.filter(i => i.is_checked).reduce((s, i) => s + (i.est_price ? Number(i.est_price) * (i.quantity || 1) : 0), 0)
           const remainingTotal = total - checkedTotal
           const { mealGroups } = splitByMeal(allItems)
-          const grouped = groupBySection(allItems)
+          const storeTags = Array.from(new Set(allItems.filter(i => i.store_tag).map(i => i.store_tag)))
+          const activeStoreFilter = storeFilterByList[list.id] || 'all'
+          const displayItems = activeStoreFilter === 'all' ? allItems : allItems.filter(i => i.store_tag === activeStoreFilter)
+          const grouped = groupBySection(displayItems)
+          const storeTotals = {}
+          let unassignedTotal = 0
+          for (const it of allItems) {
+            const line = it.est_price ? Number(it.est_price) * (it.quantity || 1) : 0
+            if (it.store_tag) storeTotals[it.store_tag] = (storeTotals[it.store_tag] || 0) + line
+            else unassignedTotal += line
+          }
           const showFreetext = showFreetextByList[list.id]
 
           return (
@@ -272,6 +285,51 @@ export default function ListPage({
                     )
                   })}
 
+                  {/* Store filter + totals — only shown once at least one item is tagged */}
+                  {storeTags.length > 0 && (
+                    <div style={s.storeFilterWrap}>
+                      <div style={s.storeFilterRow}>
+                        <button
+                          style={{ ...s.storePill, ...(activeStoreFilter === 'all' ? s.storePillActive : {}) }}
+                          onClick={() => setStoreFilterByList(cur => ({ ...cur, [list.id]: 'all' }))}
+                        >
+                          All
+                        </button>
+                        {storeTags.map((tag, idx) => {
+                          const color = MEAL_COLORS[idx % MEAL_COLORS.length]
+                          const active = activeStoreFilter === tag
+                          return (
+                            <button
+                              key={tag}
+                              style={{ ...s.storePill, ...(active ? { background: color.text, color: '#fff', border: 'none' } : {}) }}
+                              onClick={() => setStoreFilterByList(cur => ({ ...cur, [list.id]: tag }))}
+                            >
+                              <span style={{ ...s.storePillDot, background: active ? '#fff' : color.text }} />
+                              {tag}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <div style={s.storeTotalsRow}>
+                        {storeTags.map((tag, idx) => {
+                          const color = MEAL_COLORS[idx % MEAL_COLORS.length]
+                          return (
+                            <div key={tag} style={s.storeTotalChip}>
+                              <span style={{ ...s.storeTotalDot, background: color.text }} />
+                              <span style={s.storeTotalLabel}>{tag}</span>
+                              <span style={s.storeTotalValue}>${(storeTotals[tag] || 0).toFixed(2)}</span>
+                            </div>
+                          )
+                        })}
+                        <div style={s.storeTotalChip}>
+                          <span style={{ ...s.storeTotalDot, background: 'var(--charcoal-soft)' }} />
+                          <span style={s.storeTotalLabel}>Unassigned</span>
+                          <span style={s.storeTotalValue}>${unassignedTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* All items grouped by aisle — the actual shopping list */}
                   {grouped.map(({ section, items }) => (
                     <div key={section.id}>
@@ -283,6 +341,7 @@ export default function ListPage({
                           onToggle={onToggle}
                           onRemove={onRemove}
                           onUpdateQuantity={onUpdateQuantity}
+                          onOpenTagPicker={() => setTagPickerFor({ itemId: item.id, listId: list.id })}
                         />
                       ))}
                     </div>
@@ -290,6 +349,9 @@ export default function ListPage({
 
                   {allItems.length === 0 && (
                     <p style={s.emptyItems}>No items yet — head to Inventory to add some.</p>
+                  )}
+                  {allItems.length > 0 && displayItems.length === 0 && (
+                    <p style={s.emptyItems}>No items tagged "{activeStoreFilter}" yet.</p>
                   )}
 
                   {/* Add from inventory — search-only, no create/edit */}
@@ -427,6 +489,57 @@ export default function ListPage({
         </Sheet>
       )}
 
+      {/* Store tag picker */}
+      {tagPickerFor && (() => {
+        const pickerItem = listItems.find(i => i.id === tagPickerFor.itemId)
+        if (!pickerItem) return null
+        const listTags = Array.from(new Set(
+          listItems.filter(i => i.list_id === tagPickerFor.listId && i.store_tag).map(i => i.store_tag)
+        ))
+        function close() { setTagPickerFor(null); setNewTagText('') }
+        function pick(tag) {
+          onSetStoreTag(pickerItem.id, tag)
+          close()
+        }
+        return (
+          <Sheet onClose={close}>
+            <p style={s.sheetTitle}>Which store for "{pickerItem.name}"?</p>
+            {listTags.length > 0 && (
+              <div style={s.storeOptionRow}>
+                {listTags.map(tag => (
+                  <button
+                    key={tag}
+                    style={{ ...s.storeOption, ...(pickerItem.store_tag === tag ? s.storeOptionActive : {}) }}
+                    onClick={() => pick(tag)}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            )}
+            {pickerItem.store_tag && (
+              <button style={s.storeOptionClear} onClick={() => pick(null)}>No store (clear)</button>
+            )}
+            <div style={{ display: 'flex', gap: 8, marginTop: 10, padding: '0 16px' }}>
+              <input
+                autoFocus
+                style={{ ...s.input, flex: 1 }}
+                placeholder="Or type a new store…"
+                value={newTagText}
+                onChange={e => setNewTagText(e.target.value)}
+              />
+              <button
+                style={s.confirmBtn}
+                disabled={!newTagText.trim()}
+                onClick={() => pick(newTagText.trim())}
+              >
+                Set
+              </button>
+            </div>
+          </Sheet>
+        )
+      })()}
+
       {/* Confirm clear */}
       {confirmClearId && (
         <div style={s.overlay} onClick={() => setConfirmClearId(null)}>
@@ -446,7 +559,7 @@ export default function ListPage({
   )
 }
 
-function ListRow({ item, onToggle, onRemove, onUpdateQuantity }) {
+function ListRow({ item, onToggle, onRemove, onUpdateQuantity, onOpenTagPicker }) {
   const qty = item.quantity || 1
   const lineTotal = item.est_price ? Number(item.est_price) * qty : null
 
@@ -466,6 +579,14 @@ function ListRow({ item, onToggle, onRemove, onUpdateQuantity }) {
         {item.name}
         {item.tags?.length > 0 && <span style={s.optTag}>{tagLabel(item.tags)}</span>}
       </button>
+
+      {onOpenTagPicker && (
+        item.store_tag ? (
+          <button style={s.storeTagChip} onClick={onOpenTagPicker}>{item.store_tag}</button>
+        ) : (
+          <button style={s.storeTagAdd} onClick={onOpenTagPicker}>+ store</button>
+        )
+      )}
 
       <div style={s.rowRight}>
         <div style={s.qtyRow}>
@@ -534,6 +655,22 @@ const s = {
   checkbox: { width: 22, height: 22, borderRadius: 6, border: '1.5px solid', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, cursor: 'pointer' },
   rowLabel: { flex: 1, background: 'none', border: 'none', textAlign: 'left', fontSize: 15, padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer' },
   optTag: { fontSize: 12, fontStyle: 'normal', color: 'var(--charcoal-soft)' },
+  storeTagChip: { flexShrink: 0, border: 'none', background: 'var(--tan-light)', color: 'var(--tan)', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 8, cursor: 'pointer', marginRight: 4 },
+  storeTagAdd: { flexShrink: 0, border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 11, padding: '3px 6px', cursor: 'pointer', marginRight: 4, textDecoration: 'underline' },
+  storeFilterWrap: { padding: '10px 14px 4px', borderBottom: '0.5px solid var(--cream-border)' },
+  storeFilterRow: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 },
+  storePill: { display: 'flex', alignItems: 'center', gap: 5, border: '1px solid var(--cream-border)', background: '#fff', color: 'var(--charcoal-soft)', fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 20, cursor: 'pointer' },
+  storePillActive: { background: 'var(--primary)', color: '#fff', border: 'none' },
+  storePillDot: { width: 7, height: 7, borderRadius: '50%', flexShrink: 0 },
+  storeTotalsRow: { display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 8 },
+  storeTotalChip: { display: 'flex', alignItems: 'center', gap: 5, border: '1px solid var(--cream-border)', borderRadius: 8, padding: '5px 9px', flexShrink: 0 },
+  storeTotalDot: { width: 7, height: 7, borderRadius: '50%', flexShrink: 0 },
+  storeTotalLabel: { fontSize: 11, color: 'var(--charcoal-soft)', fontWeight: 600 },
+  storeTotalValue: { fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--charcoal)' },
+  storeOptionRow: { display: 'flex', flexWrap: 'wrap', gap: 8, padding: '0 16px' },
+  storeOption: { padding: '8px 14px', borderRadius: 10, border: '1px solid var(--cream-border)', background: '#fff', color: 'var(--charcoal)', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  storeOptionActive: { background: 'var(--primary)', color: '#fff', border: 'none' },
+  storeOptionClear: { display: 'block', margin: '10px 16px 0', border: 'none', background: 'none', color: 'var(--danger)', fontSize: 12, fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', padding: 0 },
   rowRight: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, flexShrink: 0 },
   qtyRow: { display: 'flex', alignItems: 'center', gap: 4 },
   qtyBtn: { width: 25, height: 25, borderRadius: 6, border: '1px solid var(--cream-border)', background: 'var(--cream)', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, color: 'var(--accent)', cursor: 'pointer' },
