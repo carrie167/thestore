@@ -19,10 +19,11 @@ function AppShell() {
     sections, inventory, lists, listMembers, activeListId, activeList, setActiveListId,
     listItems, allListItems, meals, mealMembers, mealIngredients,
     householdMembers, myProfile, otherMembers, notes, noteMembers, createMyNote, updateNoteContent, updateNoteSharing,
+    householdStores, addHouseholdStore,
     loading, error,
     createList, updateList, deleteList,
     addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList,
-    updateQuantity, toggleChecked, removeFromList, clearList, removeMealFromList, updateItemStoreTag,
+    updateQuantity, toggleChecked, removeFromList, clearList, removeMealFromList, updateItemStoreTag, markCheckedAsPurchased,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
     addMeal, updateMeal, deleteMeal,
@@ -55,7 +56,8 @@ function AppShell() {
             onToggle={toggleChecked} onRemove={removeFromList} onClear={clearList}
             onRemoveMeal={removeMealFromList}
             onUpdateQuantity={updateQuantity} onCreateList={createList}
-            onSetStoreTag={updateItemStoreTag}
+            onSetStoreTag={updateItemStoreTag} onMarkCheckedAsPurchased={markCheckedAsPurchased}
+            householdStores={householdStores}
             onUpdateList={updateList} onDeleteList={deleteList}
             onAddFreetext={addFreetextItemToList} otherMembers={otherMembers}
             inventory={inventory} onAddFromInventory={addInventoryItemToList}
@@ -94,6 +96,7 @@ function AppShell() {
             onUpdateDisplayName={updateDisplayName}
             onGenerateInvite={generateInviteCode}
             onUseInviteCode={useInviteCode}
+            householdStores={householdStores} onAddHouseholdStore={addHouseholdStore}
             onMenuOpen={() => setSidebarOpen(true)}
             onLeaveHousehold={leaveHousehold}
             onRemoveMember={removeMember}
