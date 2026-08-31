@@ -20,6 +20,7 @@ export default function ListPage({
   onSwitchList, onToggle, onRemove, onClear, onUpdateQuantity, onRemoveMeal,
   onCreateList, onDeleteList, onUpdateList, onAddFreetext,
   otherMembers, onMenuOpen, inventory, onAddFromInventory, onSetStoreTag,
+  householdStores = [], onMarkCheckedAsPurchased,
 }) {
   const [expandedIds, setExpandedIds] = useState(new Set([activeListId].filter(Boolean)))
   const [expandedMealGroups, setExpandedMealGroups] = useState(new Set())
@@ -27,8 +28,9 @@ export default function ListPage({
   const [showInvSearchByList, setShowInvSearchByList] = useState({})
   const [invSearchByList, setInvSearchByList] = useState({})
   const [storeFilterByList, setStoreFilterByList] = useState({})
+  const [purchasedFilterByList, setPurchasedFilterByList] = useState({}) // 'all' | 'unpurchased'
   const [tagPickerFor, setTagPickerFor] = useState(null) // { itemId, listId } | null
-  const [newTagText, setNewTagText] = useState('')
+  const [editDefaultStore, setEditDefaultStore] = useState('')
   const [showNewList, setShowNewList] = useState(false)
   const [newListName, setNewListName] = useState('')
   const [newListMembers, setNewListMembers] = useState([])
@@ -135,6 +137,7 @@ export default function ListPage({
     setEditingList(list)
     setEditName(list.name)
     setEditMembers(getListSharedWith(list.id))
+    setEditDefaultStore(list.default_store || '')
   }
 
   return (
@@ -164,20 +167,35 @@ export default function ListPage({
           const isActive = list.id === activeListId
           const isExpanded = expandedIds.has(list.id)
           const total = allItems.reduce((s, i) => s + (i.est_price ? Number(i.est_price) * (i.quantity || 1) : 0), 0)
-          const checkedCount = allItems.filter(i => i.is_checked).length
-          const checkedTotal = allItems.filter(i => i.is_checked).reduce((s, i) => s + (i.est_price ? Number(i.est_price) * (i.quantity || 1) : 0), 0)
-          const remainingTotal = total - checkedTotal
+
+          // Purchased (paid for) vs unpurchased — persists across stores in the same trip
+          const purchasedItems = allItems.filter(i => i.is_purchased)
+          const unpurchasedItems = allItems.filter(i => !i.is_purchased)
+          const purchasedTotal = purchasedItems.reduce((s, i) => s + (i.est_price ? Number(i.est_price) * (i.quantity || 1) : 0), 0)
+          const unpurchasedTotal = total - purchasedTotal
+
+          // Checked/remaining only reasons about what's still unpurchased —
+          // "checked" means "grabbed in this pass", which resets per store
+          const checkedCount = unpurchasedItems.filter(i => i.is_checked).length
+          const checkedTotal = unpurchasedItems.filter(i => i.is_checked).reduce((s, i) => s + (i.est_price ? Number(i.est_price) * (i.quantity || 1) : 0), 0)
+          const remainingTotal = unpurchasedTotal - checkedTotal
+
           const { mealGroups } = splitByMeal(allItems)
-          const storeTags = Array.from(new Set(allItems.filter(i => i.store_tag).map(i => i.store_tag)))
+
+          // Store tag: an item's own tag, or the cart's default if untagged
+          function effectiveStoreTag(item) { return item.store_tag || list.default_store || null }
+          const storeTags = Array.from(new Set(allItems.map(effectiveStoreTag).filter(Boolean)))
           const activeStoreFilter = storeFilterByList[list.id] || 'all'
-          const displayItems = activeStoreFilter === 'all' ? allItems : allItems.filter(i => i.store_tag === activeStoreFilter)
+          const activePurchasedFilter = purchasedFilterByList[list.id] || 'all'
+          const displayItems = allItems
+            .filter(i => activeStoreFilter === 'all' || effectiveStoreTag(i) === activeStoreFilter)
+            .filter(i => activePurchasedFilter === 'all' || !i.is_purchased)
           const grouped = groupBySection(displayItems)
           const storeTotals = {}
-          let unassignedTotal = 0
           for (const it of allItems) {
             const line = it.est_price ? Number(it.est_price) * (it.quantity || 1) : 0
-            if (it.store_tag) storeTotals[it.store_tag] = (storeTotals[it.store_tag] || 0) + line
-            else unassignedTotal += line
+            const tag = effectiveStoreTag(it)
+            if (tag) storeTotals[tag] = (storeTotals[tag] || 0) + line
           }
           const showFreetext = showFreetextByList[list.id]
 
@@ -196,19 +214,38 @@ export default function ListPage({
                       {getListSharedWith(list.id).length > 0 ? 'Shared' : 'Private'}
                       {' · '}{allItems.length} item{allItems.length !== 1 ? 's' : ''}
                       {total > 0 ? ` · $${total.toFixed(2)}` : ''}
+                      {list.default_store ? ` · Default: ${list.default_store}` : ''}
                     </p>
                     {allItems.length > 0 && (
-                      <div style={s.progressCols}>
-                        <div style={s.progressCol}>
-                          <p style={s.progressLabel}>Checked</p>
-                          <p style={s.progressValue}>{checkedCount} / ${checkedTotal.toFixed(2)}</p>
+                      <>
+                        <div style={s.progressCols}>
+                          <div style={s.progressCol}>
+                            <p style={s.progressLabel}>Purchased</p>
+                            <p style={s.progressValue}>{purchasedItems.length} / ${purchasedTotal.toFixed(2)}</p>
+                          </div>
+                          <div style={s.progressDivider} />
+                          <div style={s.progressCol}>
+                            <p style={s.progressLabel}>Unpurchased</p>
+                            <p style={s.progressValue}>{unpurchasedItems.length} / ${unpurchasedTotal.toFixed(2)}</p>
+                          </div>
                         </div>
-                        <div style={s.progressDivider} />
-                        <div style={s.progressCol}>
-                          <p style={s.progressLabel}>Remaining</p>
-                          <p style={s.progressValue}>{allItems.length - checkedCount} / ${remainingTotal.toFixed(2)}</p>
+                        <div style={s.progressCols}>
+                          <div style={s.progressCol}>
+                            <p style={s.progressLabel}>Checked</p>
+                            <p style={s.progressValue}>{checkedCount} / ${checkedTotal.toFixed(2)}</p>
+                          </div>
+                          <div style={s.progressDivider} />
+                          <div style={s.progressCol}>
+                            <p style={s.progressLabel}>Remaining</p>
+                            <p style={s.progressValue}>{unpurchasedItems.length - checkedCount} / ${remainingTotal.toFixed(2)}</p>
+                          </div>
                         </div>
-                      </div>
+                        {checkedCount > 0 && (
+                          <button style={s.markPurchasedBtn} onClick={() => onMarkCheckedAsPurchased(list.id)}>
+                            Mark {checkedCount} checked as purchased
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                   <button style={s.expandBtn} onClick={() => toggleExpand(list.id)}>
@@ -285,7 +322,25 @@ export default function ListPage({
                     )
                   })}
 
-                  {/* Store filter + totals — only shown once at least one item is tagged */}
+                  {/* Purchased filter — hide what's already bought while shopping the next store */}
+                  {purchasedItems.length > 0 && (
+                    <div style={s.purchasedFilterRow}>
+                      <button
+                        style={{ ...s.storePill, ...(activePurchasedFilter === 'all' ? s.storePillActive : {}) }}
+                        onClick={() => setPurchasedFilterByList(cur => ({ ...cur, [list.id]: 'all' }))}
+                      >
+                        All
+                      </button>
+                      <button
+                        style={{ ...s.storePill, ...(activePurchasedFilter === 'unpurchased' ? s.storePillActive : {}) }}
+                        onClick={() => setPurchasedFilterByList(cur => ({ ...cur, [list.id]: 'unpurchased' }))}
+                      >
+                        Unpurchased only
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Store filter + totals — only shown once at least one item has a store (own tag or cart default) */}
                   {storeTags.length > 0 && (
                     <div style={s.storeFilterWrap}>
                       <div style={s.storeFilterRow}>
@@ -321,11 +376,6 @@ export default function ListPage({
                             </div>
                           )
                         })}
-                        <div style={s.storeTotalChip}>
-                          <span style={{ ...s.storeTotalDot, background: 'var(--charcoal-soft)' }} />
-                          <span style={s.storeTotalLabel}>Unassigned</span>
-                          <span style={s.storeTotalValue}>${unassignedTotal.toFixed(2)}</span>
-                        </div>
                       </div>
                     </div>
                   )}
@@ -342,6 +392,7 @@ export default function ListPage({
                           onRemove={onRemove}
                           onUpdateQuantity={onUpdateQuantity}
                           onOpenTagPicker={() => setTagPickerFor({ itemId: item.id, listId: list.id })}
+                          defaultStore={list.default_store}
                         />
                       ))}
                     </div>
@@ -351,7 +402,13 @@ export default function ListPage({
                     <p style={s.emptyItems}>No items yet — head to Inventory to add some.</p>
                   )}
                   {allItems.length > 0 && displayItems.length === 0 && (
-                    <p style={s.emptyItems}>No items tagged "{activeStoreFilter}" yet.</p>
+                    <p style={s.emptyItems}>
+                      {activePurchasedFilter === 'unpurchased' && activeStoreFilter !== 'all'
+                        ? `Nothing left to get at ${activeStoreFilter}.`
+                        : activePurchasedFilter === 'unpurchased'
+                        ? 'Everything here is purchased.'
+                        : `No items tagged "${activeStoreFilter}" yet.`}
+                    </p>
                   )}
 
                   {/* Add from inventory — search-only, no create/edit */}
@@ -471,7 +528,7 @@ export default function ListPage({
           <div style={s.sheetDoneBar}>
             <p style={s.sheetTitle2}>Edit list</p>
             <button style={s.doneBtn} onClick={async () => {
-              await onUpdateList(editingList.id, editName, editMembers)
+              await onUpdateList(editingList.id, editName, editMembers, editDefaultStore)
               setEditingList(null)
             }}>Done</button>
           </div>
@@ -480,6 +537,16 @@ export default function ListPage({
               Name
               <input style={s.input} value={editName} onChange={e => setEditName(e.target.value)} />
             </label>
+            <label style={s.fieldLabel}>
+              Default store
+              <select style={s.input} value={editDefaultStore} onChange={e => setEditDefaultStore(e.target.value)}>
+                <option value="">None — tag items individually</option>
+                {householdStores.map(store => (
+                  <option key={store.id} value={store.name}>{store.name}</option>
+                ))}
+              </select>
+            </label>
+            <p style={s.fieldHint}>Untagged items count toward this store. Only tag the items you want somewhere else.</p>
             <MemberPicker members={otherMembers} selected={editMembers} onChange={setEditMembers} label="Share with" />
             <button style={s.deleteLink} onClick={async () => {
               await onDeleteList(editingList.id)
@@ -492,11 +559,9 @@ export default function ListPage({
       {/* Store tag picker */}
       {tagPickerFor && (() => {
         const pickerItem = listItems.find(i => i.id === tagPickerFor.itemId)
+        const pickerList = lists.find(l => l.id === tagPickerFor.listId)
         if (!pickerItem) return null
-        const listTags = Array.from(new Set(
-          listItems.filter(i => i.list_id === tagPickerFor.listId && i.store_tag).map(i => i.store_tag)
-        ))
-        function close() { setTagPickerFor(null); setNewTagText('') }
+        function close() { setTagPickerFor(null) }
         function pick(tag) {
           onSetStoreTag(pickerItem.id, tag)
           close()
@@ -504,38 +569,22 @@ export default function ListPage({
         return (
           <Sheet onClose={close}>
             <p style={s.sheetTitle}>Which store for "{pickerItem.name}"?</p>
-            {listTags.length > 0 && (
-              <div style={s.storeOptionRow}>
-                {listTags.map(tag => (
-                  <button
-                    key={tag}
-                    style={{ ...s.storeOption, ...(pickerItem.store_tag === tag ? s.storeOptionActive : {}) }}
-                    onClick={() => pick(tag)}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            )}
-            {pickerItem.store_tag && (
-              <button style={s.storeOptionClear} onClick={() => pick(null)}>No store (clear)</button>
-            )}
-            <div style={{ display: 'flex', gap: 8, marginTop: 10, padding: '0 16px' }}>
-              <input
-                autoFocus
-                style={{ ...s.input, flex: 1 }}
-                placeholder="Or type a new store…"
-                value={newTagText}
-                onChange={e => setNewTagText(e.target.value)}
-              />
-              <button
-                style={s.confirmBtn}
-                disabled={!newTagText.trim()}
-                onClick={() => pick(newTagText.trim())}
-              >
-                Set
-              </button>
+            <div style={s.storeOptionRow}>
+              {householdStores.map(store => (
+                <button
+                  key={store.id}
+                  style={{ ...s.storeOption, ...(pickerItem.store_tag === store.name ? s.storeOptionActive : {}) }}
+                  onClick={() => pick(store.name)}
+                >
+                  {store.name}
+                </button>
+              ))}
             </div>
+            {pickerItem.store_tag && (
+              <button style={s.storeOptionClear} onClick={() => pick(null)}>
+                {pickerList?.default_store ? `Clear tag (use cart default: ${pickerList.default_store})` : 'No store (clear)'}
+              </button>
+            )}
           </Sheet>
         )
       })()}
@@ -559,22 +608,26 @@ export default function ListPage({
   )
 }
 
-function ListRow({ item, onToggle, onRemove, onUpdateQuantity, onOpenTagPicker }) {
+function ListRow({ item, onToggle, onRemove, onUpdateQuantity, onOpenTagPicker, defaultStore }) {
   const qty = item.quantity || 1
   const lineTotal = item.est_price ? Number(item.est_price) * qty : null
+  const purchased = item.is_purchased
+  const dimmed = purchased || item.is_checked
 
   return (
-    <div style={{ ...s.row, background: item.is_checked ? 'var(--cream-light)' : '#fff' }}>
+    <div style={{ ...s.row, background: item.is_checked && !purchased ? 'var(--cream-light)' : '#fff', opacity: purchased ? 0.55 : 1 }}>
       <button
         style={{ ...s.checkbox, background: item.is_checked ? 'var(--sage)' : 'transparent', borderColor: item.is_checked ? 'var(--sage)' : 'var(--primary-light)' }}
         onClick={() => onToggle(item)}
+        disabled={purchased}
       >
         {item.is_checked && <span style={{ color: '#fff', fontSize: 12 }}>✓</span>}
       </button>
 
       <button
-        style={{ ...s.rowLabel, color: item.is_checked ? 'var(--charcoal-soft)' : 'var(--charcoal)', textDecoration: item.is_checked ? 'line-through' : 'none', fontStyle: item.tags?.length ? 'italic' : 'normal' }}
+        style={{ ...s.rowLabel, color: dimmed ? 'var(--charcoal-soft)' : 'var(--charcoal)', textDecoration: (item.is_checked || purchased) ? 'line-through' : 'none', fontStyle: item.tags?.length ? 'italic' : 'normal' }}
         onClick={() => onToggle(item)}
+        disabled={purchased}
       >
         {item.name}
         {item.tags?.length > 0 && <span style={s.optTag}>{tagLabel(item.tags)}</span>}
@@ -583,6 +636,8 @@ function ListRow({ item, onToggle, onRemove, onUpdateQuantity, onOpenTagPicker }
       {onOpenTagPicker && (
         item.store_tag ? (
           <button style={s.storeTagChip} onClick={onOpenTagPicker}>{item.store_tag}</button>
+        ) : defaultStore ? (
+          <button style={s.storeTagDefault} onClick={onOpenTagPicker}>{defaultStore}</button>
         ) : (
           <button style={s.storeTagAdd} onClick={onOpenTagPicker}>+ store</button>
         )
@@ -591,11 +646,11 @@ function ListRow({ item, onToggle, onRemove, onUpdateQuantity, onOpenTagPicker }
       <div style={s.rowRight}>
         <div style={s.qtyRow}>
           <button style={s.qtyBtn} onClick={() => onUpdateQuantity(item, qty - 1)}>−</button>
-          <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', minWidth: 14, textAlign: 'center', color: item.is_checked ? 'var(--charcoal-soft)' : 'var(--charcoal)' }}>{qty}</span>
+          <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', minWidth: 14, textAlign: 'center', color: dimmed ? 'var(--charcoal-soft)' : 'var(--charcoal)' }}>{qty}</span>
           <button style={s.qtyBtn} onClick={() => onUpdateQuantity(item, qty + 1)}>+</button>
         </div>
         {lineTotal != null && (
-          <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: item.is_checked ? 'var(--charcoal-soft)' : 'var(--tan)', textDecoration: item.is_checked ? 'line-through' : 'none' }}>
+          <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: dimmed ? 'var(--charcoal-soft)' : 'var(--tan)', textDecoration: (item.is_checked || purchased) ? 'line-through' : 'none' }}>
             ${lineTotal.toFixed(2)}
           </span>
         )}
@@ -631,6 +686,7 @@ const s = {
   listName: { margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--charcoal)' },
   listMeta: { margin: '3px 0 0', fontSize: 11, color: 'var(--charcoal-soft)' },
   progressCols: { display: 'flex', alignItems: 'stretch', marginTop: 6, border: '1px solid var(--cream-border)', borderRadius: 8, overflow: 'hidden' },
+  markPurchasedBtn: { marginTop: 6, border: 'none', background: 'var(--sage)', color: 'var(--sage-dark)', fontSize: 12, fontWeight: 700, padding: '7px 12px', borderRadius: 8, cursor: 'pointer', width: '100%' },
   progressCol: { flex: 1, padding: '5px 10px', textAlign: 'center' },
   progressDivider: { width: 1, background: 'var(--cream-border)' },
   progressLabel: { margin: 0, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--charcoal-soft)' },
@@ -656,9 +712,11 @@ const s = {
   rowLabel: { flex: 1, background: 'none', border: 'none', textAlign: 'left', fontSize: 15, padding: 0, fontFamily: 'var(--font-body)', cursor: 'pointer' },
   optTag: { fontSize: 12, fontStyle: 'normal', color: 'var(--charcoal-soft)' },
   storeTagChip: { flexShrink: 0, border: 'none', background: 'var(--tan-light)', color: 'var(--tan)', fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 8, cursor: 'pointer', marginRight: 4 },
+  storeTagDefault: { flexShrink: 0, border: '1px dashed var(--cream-border)', background: 'none', color: 'var(--charcoal-soft)', fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 8, cursor: 'pointer', marginRight: 4 },
   storeTagAdd: { flexShrink: 0, border: 'none', background: 'none', color: 'var(--charcoal-soft)', fontSize: 11, padding: '3px 6px', cursor: 'pointer', marginRight: 4, textDecoration: 'underline' },
   storeFilterWrap: { padding: '10px 14px 4px', borderBottom: '0.5px solid var(--cream-border)' },
   storeFilterRow: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 },
+  purchasedFilterRow: { display: 'flex', gap: 6, padding: '10px 14px 4px' },
   storePill: { display: 'flex', alignItems: 'center', gap: 5, border: '1px solid var(--cream-border)', background: '#fff', color: 'var(--charcoal-soft)', fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 20, cursor: 'pointer' },
   storePillActive: { background: 'var(--primary)', color: '#fff', border: 'none' },
   storePillDot: { width: 7, height: 7, borderRadius: '50%', flexShrink: 0 },
@@ -695,6 +753,7 @@ const s = {
   doneBtn: { border: 'none', background: 'var(--primary)', color: '#fff', borderRadius: 8, padding: '7px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer' },
   sheetBody: { padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14 },
   fieldLabel: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
+  fieldHint: { margin: '-6px 0 0', fontSize: 11, color: 'var(--charcoal-soft)', lineHeight: 1.4 },
   input: { width: '100%', border: '1px solid var(--cream-border)', borderRadius: 10, padding: '10px 12px', fontSize: 16, background: '#fff', color: 'var(--charcoal)', boxSizing: 'border-box' },
   cancelBtn: { flex: 1, padding: 11, borderRadius: 8, border: '1px solid var(--cream-border)', background: 'none', color: 'var(--charcoal)', fontWeight: 600, cursor: 'pointer' },
   confirmBtn: { flex: 1, padding: 11, borderRadius: 8, border: 'none', background: 'var(--primary)', color: '#fff', fontWeight: 600, cursor: 'pointer' },
