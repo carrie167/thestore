@@ -3,7 +3,7 @@ import PageHeader from '../components/PageHeader'
 import { useAuth } from '../lib/AuthContext'
 import { useTheme } from '../lib/ThemeContext'
 
-export default function SettingsPage({ myProfile, householdMembers, onUpdateDisplayName, onGenerateInvite, onUseInviteCode, onMenuOpen, signOut, onLeaveHousehold, onRemoveMember }) {
+export default function SettingsPage({ myProfile, householdMembers, onUpdateDisplayName, onGenerateInvite, onUseInviteCode, householdStores = [], onAddHouseholdStore, onMenuOpen, signOut, onLeaveHousehold, onRemoveMember }) {
   const { user } = useAuth()
   const { themeId, setThemeId, themes } = useTheme()
   const [displayName, setDisplayName] = useState(myProfile?.display_name || '')
@@ -26,6 +26,9 @@ export default function SettingsPage({ myProfile, householdMembers, onUpdateDisp
   const [joiningHousehold, setJoiningHousehold] = useState(false)
   const [joinResult, setJoinResult] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [newStoreName, setNewStoreName] = useState('')
+  const [addingStore, setAddingStore] = useState(false)
+  const [storeError, setStoreError] = useState(null)
 
   async function handleSaveName() {
     if (!displayName.trim()) return
@@ -59,6 +62,18 @@ export default function SettingsPage({ myProfile, householdMembers, onUpdateDisp
     } catch (e) {
       setJoinResult({ error: e.message })
     } finally { setJoiningHousehold(false) }
+  }
+
+  async function handleAddStore() {
+    if (!newStoreName.trim()) return
+    setAddingStore(true)
+    setStoreError(null)
+    try {
+      await onAddHouseholdStore(newStoreName.trim())
+      setNewStoreName('')
+    } catch (e) {
+      setStoreError(e.message?.includes('duplicate') || e.message?.includes('unique') ? 'That store is already on the list.' : 'Could not add that store.')
+    } finally { setAddingStore(false) }
   }
 
   return (
@@ -149,6 +164,28 @@ export default function SettingsPage({ myProfile, householdMembers, onUpdateDisp
           )}
         </Section>
 
+        {/* Stores */}
+        <Section title="Stores">
+          <p style={s.sectionBody}>Shared with your whole household — anyone can add one, and any cart can be set to default to a store from this list.</p>
+          <div style={s.storeChipRow}>
+            {householdStores.map(store => (
+              <span key={store.id} style={s.storeChip}>{store.name}</span>
+            ))}
+          </div>
+          <div style={s.inputRow}>
+            <input
+              style={s.input}
+              value={newStoreName}
+              onChange={e => setNewStoreName(e.target.value)}
+              placeholder="Add a store…"
+            />
+            <button style={s.saveBtn} onClick={handleAddStore} disabled={addingStore || !newStoreName.trim()}>
+              {addingStore ? '…' : 'Add'}
+            </button>
+          </div>
+          {storeError && <p style={s.errorMsg}>{storeError}</p>}
+        </Section>
+
         {/* Invite someone */}
         <Section title="Invite to household">
           <p style={s.sectionBody}>Generate a 6-letter code and send it to someone. The code expires in 48 hours.</p>
@@ -209,6 +246,8 @@ const s = {
   sectionTitle: { margin: 0, fontSize: 11, fontWeight: 700, color: 'var(--charcoal-soft)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '12px 14px 8px', borderBottom: '0.5px solid var(--cream-border)' },
   sectionContent: { padding: '14px', display: 'flex', flexDirection: 'column', gap: 12 },
   sectionBody: { margin: 0, fontSize: 13, color: 'var(--charcoal-soft)', lineHeight: 1.5 },
+  storeChipRow: { display: 'flex', flexWrap: 'wrap', gap: 6 },
+  storeChip: { fontSize: 12, fontWeight: 600, color: 'var(--charcoal)', background: 'var(--cream)', border: '1px solid var(--cream-border)', borderRadius: 20, padding: '5px 12px' },
   email: { margin: 0, fontSize: 14, color: 'var(--charcoal)', fontFamily: 'var(--font-mono)', fontWeight: 500 },
   fieldLabel: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--charcoal-soft)' },
   inputRow: { display: 'flex', gap: 8 },
