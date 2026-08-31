@@ -15,6 +15,7 @@ export function useStoreData() {
   const [householdMembers, setHouseholdMembers] = useState([]) // { user_id, display_name }
   const [notes, setNotes] = useState([]) // rows visible to me: mine + shared with me
   const [noteMembers, setNoteMembers] = useState([]) // { note_id, user_id }
+  const [householdStores, setHouseholdStores] = useState([]) // { id, name }
   const [activeListId, setActiveListId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -79,12 +80,14 @@ export function useStoreData() {
       })))
     }
 
-    const [notesRes, noteMembersRes] = await Promise.all([
+    const [notesRes, noteMembersRes, storesRes] = await Promise.all([
       supabase.from('notes').select('*'),
       supabase.from('note_members').select('*'),
+      supabase.from('household_stores').select('*').order('name'),
     ])
     setNotes(notesRes.data || [])
     setNoteMembers(noteMembersRes.data || [])
+    setHouseholdStores(storesRes.data || [])
 
     setLoading(false)
   }, [])
@@ -112,6 +115,18 @@ export function useStoreData() {
     const { data, error } = await supabase.from('household_members').select('household_id').eq('user_id', user.id).limit(1).single()
     if (error) throw error
     return data.household_id
+  }
+
+  // ── Stores ── (shared with the whole household)
+  async function addHouseholdStore(name) {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    const household_id = await getHouseholdId()
+    const { data, error } = await supabase.from('household_stores')
+      .insert({ household_id, name: trimmed, created_by: user.id }).select().single()
+    if (error) throw error
+    setHouseholdStores(cur => [...cur, data].sort((a, b) => a.name.localeCompare(b.name)))
+    return data
   }
 
   // ── Notes ── (mirrors lists: each note is private to its creator unless shared)
@@ -158,8 +173,8 @@ export function useStoreData() {
     return list
   }
 
-  async function updateList(id, name, sharedWithUserIds = []) {
-    const { data, error } = await supabase.from('lists').update({ name }).eq('id', id).select().single()
+  async function updateList(id, name, sharedWithUserIds = [], defaultStore = null) {
+    const { data, error } = await supabase.from('lists').update({ name, default_store: defaultStore || null }).eq('id', id).select().single()
     if (error) throw error
     setLists(cur => cur.map(l => l.id === id ? data : l))
 
@@ -247,6 +262,16 @@ export function useStoreData() {
     const { data, error } = await supabase.from('list_items').update({ store_tag: tag || null }).eq('id', itemId).select().single()
     if (error) throw error
     setListItems(cur => cur.map(i => i.id === data.id ? data : i))
+  }
+
+  async function markCheckedAsPurchased(listId) {
+    const ids = listItems.filter(i => i.list_id === listId && i.is_checked && !i.is_purchased).map(i => i.id)
+    if (!ids.length) return
+    const { data, error } = await supabase.from('list_items')
+      .update({ is_purchased: true, is_checked: false }).in('id', ids).select()
+    if (error) throw error
+    const byId = new Map(data.map(d => [d.id, d]))
+    setListItems(cur => cur.map(i => byId.get(i.id) || i))
   }
 
   async function decrementInventoryItemInList(inventoryItem, listId = activeListId) {
@@ -473,10 +498,11 @@ export function useStoreData() {
     sections, inventory, lists, listMembers, activeListId, activeList, setActiveListId,
     listItems: activeListItems, allListItems: listItems, meals, mealMembers, mealIngredients,
     householdMembers, myProfile, otherMembers, notes, noteMembers, createMyNote, updateNoteContent, updateNoteSharing,
+    householdStores, addHouseholdStore,
     loading, error, reload: loadAll,
     createList, updateList, deleteList,
     addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList,
-    updateQuantity, toggleChecked, removeFromList, clearList, removeMealFromList, updateItemStoreTag,
+    updateQuantity, toggleChecked, removeFromList, clearList, removeMealFromList, updateItemStoreTag, markCheckedAsPurchased,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
     addMeal, updateMeal, deleteMeal,
