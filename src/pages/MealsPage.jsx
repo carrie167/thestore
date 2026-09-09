@@ -216,7 +216,7 @@ export default function MealsPage({
                           <span style={{ ...s.ingName, ...(ing.tags?.length ? { fontStyle: 'italic' } : {}) }}>
                             {ing.quantity > 1 && <span style={s.ingQty}>{ing.quantity}× </span>}
                             {item?.name || ing.name}
-                            {ing.tags?.length > 0 && <span style={s.optTag}> ({ing.tags.map(t => t === 'optional' ? 'opt' : 'side').join(', ')})</span>}
+                            {ing.tags?.length > 0 && <span style={s.optTag}> ({ing.tags.map(t => t === 'optional' ? 'opt' : t === 'side' ? 'side' : 'pantry').join(', ')})</span>}
                           </span>
                           {price != null && <span style={s.ingPrice}>${price.toFixed(2)}</span>}
                         </div>
@@ -501,6 +501,9 @@ function MealForm({ meal, existingIngredients = [], existingMembers = [], invent
                           </button>
                           <button style={s.tagOption} onClick={() => toggleIngTag(idx, 'side')}>
                             <span style={s.tagRadio}>{ing.tags?.includes('side') ? '☑' : '☐'}</span> Side
+                          </button>
+                          <button style={s.tagOption} onClick={() => toggleIngTag(idx, 'pantry')}>
+                            <span style={s.tagRadio}>{ing.tags?.includes('pantry') ? '☑' : '☐'}</span> Pantry
                           </button>
                         </div>
                       </div>
