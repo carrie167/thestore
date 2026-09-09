@@ -22,7 +22,7 @@ function AppShell() {
     householdStores, addHouseholdStore,
     loading, error,
     createList, updateList, deleteList,
-    addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList,
+    addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList, addSingleMealIngredientToList,
     updateQuantity, toggleChecked, removeFromList, clearList, removeMealFromList, updateItemStoreTag, markCheckedAsPurchased,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
@@ -61,6 +61,7 @@ function AppShell() {
             onUpdateList={updateList} onDeleteList={deleteList}
             onAddFreetext={addFreetextItemToList} otherMembers={otherMembers}
             inventory={inventory} onAddFromInventory={addInventoryItemToList}
+            meals={meals} mealIngredients={mealIngredients} onAddPantryItem={addSingleMealIngredientToList}
             onMenuOpen={() => setSidebarOpen(true)}
           />
         )}
