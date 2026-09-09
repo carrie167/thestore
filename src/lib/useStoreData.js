@@ -395,6 +395,12 @@ export function useStoreData() {
     setMealMembers(cur => [...cur.filter(m => m.meal_id !== id), ...newMembers])
   }
 
+  async function togglePinMeal(id, isPinned) {
+    const { data, error } = await supabase.from('meals').update({ is_pinned: isPinned }).eq('id', id).select().single()
+    if (error) throw error
+    setMeals(cur => cur.map(m => m.id === id ? data : m))
+  }
+
   async function deleteMeal(id) {
     const { error } = await supabase.from('meals').delete().eq('id', id)
     if (error) throw error
@@ -505,7 +511,7 @@ export function useStoreData() {
     updateQuantity, toggleChecked, removeFromList, clearList, removeMealFromList, updateItemStoreTag, markCheckedAsPurchased,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
-    addMeal, updateMeal, deleteMeal,
+    addMeal, updateMeal, deleteMeal, togglePinMeal,
     generateInviteCode, useInviteCode,
     updateDisplayName, updateTheme,
     leaveHousehold, removeMember,
