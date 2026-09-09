@@ -26,7 +26,7 @@ function AppShell() {
     updateQuantity, toggleChecked, removeFromList, clearList, removeMealFromList, updateItemStoreTag, markCheckedAsPurchased,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
-    addMeal, updateMeal, deleteMeal,
+    addMeal, updateMeal, deleteMeal, togglePinMeal,
     generateInviteCode, useInviteCode,
     updateDisplayName, updateTheme, leaveHousehold, removeMember,
   } = useStoreData()
@@ -79,7 +79,7 @@ function AppShell() {
             meals={meals} mealIngredients={mealIngredients} mealMembers={mealMembers}
             inventory={inventory} sections={sections} activeList={activeList}
             otherMembers={otherMembers} onAddMealToList={addMealToList}
-            onAddMeal={addMeal} onUpdateMeal={updateMeal} onDeleteMeal={deleteMeal}
+            onAddMeal={addMeal} onUpdateMeal={updateMeal} onDeleteMeal={deleteMeal} onTogglePin={togglePinMeal}
             onAddInventoryItem={addInventoryItem} onMenuOpen={() => setSidebarOpen(true)}
           />
         )}
