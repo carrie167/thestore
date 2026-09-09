@@ -64,8 +64,7 @@ export default function MealsPage({
     const q = search.trim().toLowerCase()
     let result = meals.filter(meal => {
       // Type filter
-      if (typeFilter === 'pinned' && !meal.is_pinned) return false
-      if (typeFilter !== 'all' && typeFilter !== 'pinned' && !mealTypesOf(meal).includes(typeFilter)) return false
+      if (typeFilter !== 'all' && !mealTypesOf(meal).includes(typeFilter)) return false
       // Search: meal name OR ingredient names
       if (!q) return true
       if (meal.name.toLowerCase().includes(q)) return true
@@ -109,13 +108,13 @@ export default function MealsPage({
         />
         <div style={s.filterRow}>
           <div style={s.typePills}>
-            {['all', 'pinned', ...MEAL_TYPES.map(t => t.id)].map(t => (
+            {['all', ...MEAL_TYPES.map(t => t.id)].map(t => (
               <button
                 key={t}
                 style={{ ...s.typePill, background: typeFilter === t ? 'var(--primary)' : 'var(--cream)', color: typeFilter === t ? '#fff' : 'var(--charcoal-soft)', border: typeFilter === t ? 'none' : '1px solid var(--cream-border)' }}
                 onClick={() => setTypeFilter(t)}
               >
-                {t === 'all' ? 'All' : t === 'pinned' ? '📌 Pinned' : mealTypeInfo(t).label}
+                {t === 'all' ? 'All' : mealTypeInfo(t).label}
               </button>
             ))}
           </div>
@@ -177,14 +176,8 @@ export default function MealsPage({
 
           return (
             <div key={meal.id} style={s.card}>
-              {/* Pin toggle — floats above the header, doesn't touch its layout */}
-              <button
-                style={{ ...s.pinBtn, opacity: meal.is_pinned ? 1 : 0.35 }}
-                onClick={() => onTogglePin(meal.id, !meal.is_pinned)}
-                aria-label={meal.is_pinned ? 'Unpin meal' : 'Pin meal'}
-              >
-                📌
-              </button>
+              {/* Pin badge — display only; toggling happens inside the expanded view */}
+              {meal.is_pinned && <span style={s.pinBadge}>📌</span>}
 
               {/* Collapsed header */}
               <button style={s.cardHeader} onClick={() => setExpandedId(isExpanded ? null : meal.id)}>
@@ -254,7 +247,12 @@ export default function MealsPage({
 
                   {/* Card actions */}
                   <div style={s.cardActions}>
-                    <button style={s.editBtn} onClick={() => setEditingId(meal.id)}>Edit</button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button style={s.editBtn} onClick={() => setEditingId(meal.id)}>Edit</button>
+                      <button style={s.editBtn} onClick={() => onTogglePin(meal.id, !meal.is_pinned)}>
+                        {meal.is_pinned ? '📌 Unpin' : '📌 Pin'}
+                      </button>
+                    </div>
                     <button
                       style={{ ...s.addToListBtn, opacity: isAdding ? 0.6 : 1 }}
                       onClick={() => handleAdd(meal)}
@@ -561,7 +559,7 @@ const s = {
   emptyTitle: { fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, margin: '0 0 8px', color: 'var(--charcoal)' },
   emptyBody: { fontSize: 14, color: 'var(--charcoal-soft)', margin: 0, lineHeight: 1.6 },
   card: { background: '#fff', borderRadius: 12, border: '1px solid var(--cream-border)', position: 'relative' },
-  pinBtn: { position: 'absolute', top: -10, right: 14, zIndex: 2, background: '#fff', border: '1px solid var(--cream-border)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' },
+  pinBadge: { position: 'absolute', top: -10, right: 14, zIndex: 2, background: '#fff', border: '1px solid var(--cream-border)', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.1)' },
   cardHeader: { width: '100%', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '13px 14px', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer' },
   cardTitleRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   mealName: { margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--charcoal)', fontFamily: 'var(--font-display)' },
