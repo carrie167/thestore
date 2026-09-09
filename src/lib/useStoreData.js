@@ -227,7 +227,7 @@ export function useStoreData() {
 
   async function addMealToList(meal, listId = activeListId) {
     if (!listId) throw new Error('No active list')
-    const ings = mealIngredients.filter(i => i.meal_id === meal.id)
+    const ings = mealIngredients.filter(i => i.meal_id === meal.id && !i.tags?.includes('pantry'))
     const invMap = new Map(inventory.map(i => [i.id, i]))
     for (const ing of ings) {
       const invItem = ing.inventory_item_id ? invMap.get(ing.inventory_item_id) : null
@@ -249,6 +249,27 @@ export function useStoreData() {
       if (error) throw error
       setListItems(cur => [...cur, data])
     }
+  }
+
+  async function addSingleMealIngredientToList(meal, ing, listId = activeListId) {
+    if (!listId) throw new Error('No active list')
+    const invItem = ing.inventory_item_id ? inventory.find(i => i.id === ing.inventory_item_id) : null
+    const { data, error } = await supabase.from('list_items').insert({
+      list_id: listId,
+      item_type: 'inventory',
+      inventory_item_id: ing.inventory_item_id || null,
+      name: invItem?.name || ing.name,
+      section_id: invItem?.section_id || null,
+      est_price: invItem?.est_price || null,
+      quantity: ing.quantity,
+      added_by: user.id,
+      source_meal_id: meal.id,
+      source_meal_name: meal.name,
+      tags: ing.tags?.length ? ing.tags : null,
+    }).select().single()
+    if (error) throw error
+    setListItems(cur => [...cur, data])
+    return data
   }
 
   async function updateQuantity(listItem, newQty) {
@@ -507,7 +528,7 @@ export function useStoreData() {
     householdStores, addHouseholdStore,
     loading, error, reload: loadAll,
     createList, updateList, deleteList,
-    addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList,
+    addInventoryItemToList, addFreetextItemToList, addMealToList, decrementInventoryItemInList, addSingleMealIngredientToList,
     updateQuantity, toggleChecked, removeFromList, clearList, removeMealFromList, updateItemStoreTag, markCheckedAsPurchased,
     addInventoryItem, updateInventoryItem, deleteInventoryItem,
     addSection, updateSection, deleteSection,
