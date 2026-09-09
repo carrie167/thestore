@@ -12,7 +12,7 @@ const MEAL_COLORS = [
 
 function tagLabel(tags) {
   if (!tags?.length) return ''
-  return ` (${tags.map(t => t === 'optional' ? 'opt' : 'side').join(', ')})`
+  return ` (${tags.map(t => t === 'optional' ? 'opt' : t === 'side' ? 'side' : 'pantry').join(', ')})`
 }
 
 export default function ListPage({
@@ -21,6 +21,7 @@ export default function ListPage({
   onCreateList, onDeleteList, onUpdateList, onAddFreetext,
   otherMembers, onMenuOpen, inventory, onAddFromInventory, onSetStoreTag,
   householdStores = [], onMarkCheckedAsPurchased,
+  meals = [], mealIngredients = [], onAddPantryItem,
 }) {
   const [expandedIds, setExpandedIds] = useState(new Set([activeListId].filter(Boolean)))
   const [expandedMealGroups, setExpandedMealGroups] = useState(new Set())
@@ -279,6 +280,15 @@ export default function ListPage({
                     const color = MEAL_COLORS[idx % MEAL_COLORS.length]
                     const key = `${list.id}:${mg.id}`
                     const mgExpanded = expandedMealGroups.has(key)
+                    const fullMeal = meals.find(m => m.id === mg.id)
+                    const pantryIngredients = mealIngredients.filter(ing =>
+                      ing.meal_id === mg.id &&
+                      ing.tags?.includes('pantry') &&
+                      !mg.items.some(item =>
+                        (ing.inventory_item_id && item.inventory_item_id === ing.inventory_item_id) ||
+                        (!ing.inventory_item_id && item.name === ing.name)
+                      )
+                    )
                     return (
                       <div key={mg.id}>
                         <button style={{ ...s.mealBanner, background: color.bg, color: color.text }} onClick={() => toggleMealGroup(key)}>
@@ -303,6 +313,22 @@ export default function ListPage({
                                 </span>
                               ))
                             )}
+
+                            {pantryIngredients.length > 0 && !removeModeGroups.has(key) && (
+                              <div style={s.pantryCheckWrap}>
+                                <p style={{ ...s.pantryCheckLabel, color: color.text }}>Pantry check — not added automatically</p>
+                                {pantryIngredients.map(ing => (
+                                  <button
+                                    key={ing.id}
+                                    style={{ ...s.pantryCheckItem, color: color.text }}
+                                    onClick={() => fullMeal && onAddPantryItem(fullMeal, ing, list.id)}
+                                  >
+                                    <span style={s.pantryCheckPlus}>+</span> {ing.name}{ing.quantity > 1 ? ` ×${ing.quantity}` : ''}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
                             <div style={s.mealBannerActions}>
                               <button
                                 style={{ ...s.mealBannerAction, color: color.text }}
@@ -705,6 +731,10 @@ const s = {
   mealBannerItemRemovable: { display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', padding: '4px 0', fontSize: 12, textAlign: 'left', cursor: 'pointer', width: '100%' },
   mealBannerX: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', border: '1px solid currentColor', fontSize: 9, flexShrink: 0 },
   mealBannerActions: { display: 'flex', gap: 16, marginTop: 4, width: '100%' },
+  pantryCheckWrap: { width: '100%', borderTop: '1px dashed rgba(0,0,0,0.12)', marginTop: 6, paddingTop: 6 },
+  pantryCheckLabel: { margin: '0 0 4px', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, opacity: 0.75 },
+  pantryCheckItem: { display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'none', padding: '3px 0', fontSize: 12, textAlign: 'left', cursor: 'pointer', width: '100%' },
+  pantryCheckPlus: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', border: '1px solid currentColor', fontSize: 11, flexShrink: 0 },
   mealBannerAction: { border: 'none', background: 'none', padding: 0, fontSize: 12, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' },
   aisleHeader: { background: 'var(--aisle-bg)', padding: '5px 14px', fontSize: 10, fontWeight: 600, color: 'var(--aisle-text)', letterSpacing: '0.08em', textTransform: 'uppercase' },
   row: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '0.5px solid var(--cream)' },
